@@ -5,6 +5,9 @@ TagManager:
   serializedVersion: 2
   tags:
   - TeleportWall
+  - Exception_E
+  - Exception_See3s
+  - Exception_Listen3s
   layers:
   - Default
   - TransparentFX
