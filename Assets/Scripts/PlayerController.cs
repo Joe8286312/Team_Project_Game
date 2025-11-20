@@ -25,10 +25,26 @@ public class PlayerController : MonoBehaviour
     private List<GameObject> listenedExceptions = new List<GameObject>();
 
 
+
+    // 新增：分身相关变量
+    public GameObject playerClonePrefab; // 在Inspector中指定分身预制体
+    private float cloneSpawnInterval = 10f; // 每10秒生成一次
+    private float cloneSpawnTimer = 0f;
+
+    // 新增：位置历史记录
+    private Queue<Vector3> positionHistory = new Queue<Vector3>();
+    private float positionRecordInterval = 0.1f; // 每0.1秒记录一次位置
+    private float recordTimer = 0f;
+    private const int historySeconds = 3; // 记录时长
+    private int maxHistorySize;
+
+
     void Start()
     {
         characterController = GetComponent<CharacterController>();
         Cursor.lockState = CursorLockMode.Locked;
+        // 在Start中提前计算队列最大尺寸，避免在Update中重复计算
+        maxHistorySize = Mathf.CeilToInt(historySeconds / positionRecordInterval);
     }
 
     void Update()
@@ -146,7 +162,110 @@ public class PlayerController : MonoBehaviour
             }
         }
 
+        
 
+        RecordPosition();
+        HandleCloneSpawning(); // 新增：处理分身生成
+    }
+
+    // 新增：记录玩家位置的方法
+    void RecordPosition()
+    {
+        recordTimer += Time.deltaTime;
+        if (recordTimer >= positionRecordInterval)
+        {
+            positionHistory.Enqueue(transform.position);
+            recordTimer -= positionRecordInterval; // 使用减法更精确，防止时间漂移
+
+            // 如果队列超出最大尺寸，只移除一个最旧的元素
+            if (positionHistory.Count > maxHistorySize)
+            {
+                positionHistory.Dequeue();
+            }
+        }
+    }
+
+    // 新增：处理分身生成的方法
+    //void HandleCloneSpawning()
+    //{
+    //    // 检查当前是否为分身异常，如果不是则直接返回
+    //    if (GameTimer.TimeExceptionType.SpawnClone != FindObjectOfType<GameTimer>().currentException)
+    //    {
+    //        return;
+    //    }
+
+    //    cloneSpawnTimer += Time.deltaTime;
+    //    if (cloneSpawnTimer >= cloneSpawnInterval)
+    //    {
+    //        cloneSpawnTimer = 0; // 重置计时器
+
+    //        // 确保历史记录中有足够的数据
+    //        if (positionHistory.Count > 0)
+    //        {
+    //            // 取出队列头部的元素，即3秒前的位置
+    //            Vector3 spawnPosition = positionHistory.Peek();
+
+    //            // 解决原地生成问题
+    //            if (Vector3.Distance(spawnPosition, transform.position) < 0.5f) // 如果距离小于0.5米
+    //            {
+    //                // 在玩家身后1米处生成
+    //                spawnPosition = transform.position - transform.forward * 1.0f;
+    //                Debug.Log("玩家原地未动，分身已在身后生成。");
+    //            }
+
+    //            Instantiate(playerClonePrefab, spawnPosition, transform.rotation); // 使用玩家当前朝向
+    //            Debug.Log($"在 {spawnPosition} 位置生成了一个分身。");
+    //        }
+    //        else
+    //        {
+    //            Debug.Log("位置历史记录不足，无法生成分身。");
+    //        }
+    //    }
+    //}
+
+    void HandleCloneSpawning()
+    {
+        GameTimer gameTimer = FindObjectOfType<GameTimer>();
+        if (gameTimer == null || gameTimer.currentException != GameTimer.TimeExceptionType.SpawnClone)
+        {
+            return;
+        }
+
+        cloneSpawnTimer += Time.deltaTime;
+        if (cloneSpawnTimer >= cloneSpawnInterval)
+        {
+            cloneSpawnTimer = 0;
+
+            // --- 新增的安全检查 ---
+            if (playerClonePrefab == null)
+            {
+                Debug.LogError("错误：PlayerClone Prefab 未在Inspector中指定或已丢失！");
+                return; // 终止执行以避免异常
+            }
+            // --- 检查结束 ---
+
+            if (positionHistory.Count > 0)
+            {
+                GameObject existingClone = GameObject.FindWithTag("Clone");
+                if (existingClone != null)
+                {
+                    Destroy(existingClone);
+                }
+
+                Vector3 spawnPosition = positionHistory.Peek();
+
+                if (Vector3.Distance(spawnPosition, transform.position) < 0.5f)
+                {
+                    spawnPosition = transform.position - transform.forward * 1.0f;
+                }
+
+                // 在实例化之后，再给新生成的对象打上Tag
+                GameObject newClone = Instantiate(playerClonePrefab, spawnPosition, transform.rotation);
+                newClone.tag = "Clone"; // 确保新实例有正确的Tag
+
+                Debug.Log($"在 {spawnPosition} 位置生成了一个新的分身。");
+            }
+        }
     }
 
     void OnTriggerEnter(Collider other)

@@ -15,7 +15,8 @@ public class GameTimer : MonoBehaviour
         Reverse,       // 时间反向
         Jump,          // 跳动计时
         Loop,          // 循环计时
-        DoubleSpeed    // 时间流逝速度x2
+        DoubleSpeed,   // 时间流逝速度x2
+        SpawnClone     // 生成分身
     }
 
     public TimeExceptionType currentException = TimeExceptionType.None;
@@ -99,6 +100,11 @@ public class GameTimer : MonoBehaviour
 
             case TimeExceptionType.DoubleSpeed:
                 elapsedTime += Time.deltaTime * 2; // 时间流逝速度加倍
+                break;
+
+            // 为SpawnClone添加一个case，它本身不改变时间流速，但可以保持异常状态
+            case TimeExceptionType.SpawnClone:
+                elapsedTime += Time.deltaTime;
                 break;
         }
     }
