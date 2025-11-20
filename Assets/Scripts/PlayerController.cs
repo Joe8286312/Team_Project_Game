@@ -33,6 +33,8 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        if (GameManager.IsGamePaused) return; // 如果游戏已暂停，则直接退出 Update()
+
         // 视角
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
@@ -143,6 +145,8 @@ public class PlayerController : MonoBehaviour
                 listenTimer = 0f;
             }
         }
+
+
     }
 
     void OnTriggerEnter(Collider other)
