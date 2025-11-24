@@ -11,13 +11,13 @@ public class Manu : MonoBehaviour
         //// “Demo”为游戏场景名，根据实际情况更换
         //SceneManager.LoadScene("Demo");
 
-        // 进入场景前手动重置，不推荐长期用
-        var gm = FindObjectOfType<GameManager>();
-        if (gm != null && gm.gameTimer != null)
-        {
-            gm.gameTimer.ResetAndStart();
-            gm.gameTimer.currentException = GameTimer.TimeExceptionType.None;
-        }
+        //// 进入场景前手动重置，不推荐长期用
+        //var gm = FindObjectOfType<GameManager>();
+        //if (gm != null && gm.gameTimer != null)
+        //{
+        //    gm.gameTimer.ResetAndStart();
+        //    gm.gameTimer.currentException = GameTimer.TimeExceptionType.None;
+        //}
         SceneManager.LoadScene("Demo");
     }
 

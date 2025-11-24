@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class GameTimer : MonoBehaviour
 {
+    //public static GameTimer Instance { get; private set; }
+
     private float elapsedTime = 0f;
     private bool isRunning = false;
 
@@ -32,6 +34,20 @@ public class GameTimer : MonoBehaviour
 
     // 标志变量，记录当前异常类型是否已记录
     private TimeExceptionType lastLoggedException = TimeExceptionType.None;
+
+    //private void Awake()
+    //{
+    //    if (Instance == null)
+    //    {
+    //        Instance = this;
+    //        DontDestroyOnLoad(gameObject);
+    //    }
+    //    else if (Instance != this)
+    //    {
+    //        Destroy(gameObject); // 防止重复实例
+    //        return;
+    //    }
+    //}
 
     // 在每一帧更新时间（如果正在运行）
     void Update()

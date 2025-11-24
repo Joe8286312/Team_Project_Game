@@ -1,13 +1,36 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class PauseMenuController : MonoBehaviour
 {
+    public TextMeshProUGUI textTimeButton;
     public GameObject pauseMenu;         // 关联PauseMenu对象
     public GameManager gameManager;      // 可选，如果需要
     public GameTimer gameTimer;          // 可选，如果需要
+
+    private void Awake()
+    {
+
+        // 初始隐藏菜单界面
+        if (pauseMenu != null)
+            pauseMenu.SetActive(false);
+
+        // 不要依赖 Inspector，而是主动查找
+        if (gameManager == null)
+        {
+            gameManager = FindObjectOfType<GameManager>();
+        }
+
+    }
+
+    public void UpdateTime(string time)
+    {
+        if (textTimeButton != null)
+            textTimeButton.text = time;
+    }
 
     // “继续游戏”按钮功能（ButtonContinue）
     public void OnContinueButtonClicked()

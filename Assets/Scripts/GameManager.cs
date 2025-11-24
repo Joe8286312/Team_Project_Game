@@ -10,9 +10,6 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
     public int collection = 0;
     public int gameLevel = 1;
-    public TextMeshProUGUI textTimeButton;
-
-    //public Button ButtonTime; // 对应 ButtonTime 按钮
 
     public UIManager ui;
     public GameTimer gameTimer;
@@ -21,7 +18,7 @@ public class GameManager : MonoBehaviour
     private float fpsUpdateInterval = 0.5f;
     private float fpsTimer = 0.0f;
 
-    public GameObject pauseMenu; // 通过 Inspector 绑定菜单界面
+    public PauseMenuController pauseMenuController;
 
     private bool isPaused = false;
 
@@ -39,15 +36,8 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
         }
 
-        // 初始隐藏菜单界面
-        if (pauseMenu != null)
-            pauseMenu.SetActive(false);
-
         SceneManager.sceneLoaded += OnSceneLoaded;
 
-        //// 绑定 TimeButton 的点击事件
-        //if (ButtonTime != null)
-        //    ButtonTime.onClick.AddListener(OnTimeButtonClicked);
     }
     void Start()
     {
@@ -64,18 +54,13 @@ public class GameManager : MonoBehaviour
         if (gameTimer != null && gameTimer.IsRunning())
         {
             ui.UpdateTime(gameTimer.GetElapsedTime());
+            string formattedTime = GameTimer.FormatTime(gameTimer.GetElapsedTime());
+            pauseMenuController.UpdateTime(formattedTime);
         }
 
         if (Input.GetKeyDown(KeyCode.Escape)) // 按下 Esc 呼出菜单
         {
             TogglePause();
-        }
-
-        // 如果计时器正在运行，更新按钮上的时间文本
-        if (textTimeButton != null && gameTimer != null)
-        {
-            string formattedTime = GameTimer.FormatTime(gameTimer.GetElapsedTime());
-            textTimeButton.text = $"{formattedTime}";
         }
 
         UpdateFPS();
@@ -91,6 +76,31 @@ public class GameManager : MonoBehaviour
     {
         ui = FindObjectOfType<UIManager>();
         gameTimer = FindObjectOfType<GameTimer>();
+        pauseMenuController = FindObjectOfType<PauseMenuController>(); // 重新查找并赋值
+
+        //// 反向也需要重新绑定
+        //if (pauseMenuController != null)
+        //{
+        //    pauseMenuController.gameManager = this;                   // for cross reference
+        //}
+
+        if (pauseMenuController != null)
+            pauseMenuController.gameManager = this;
+
+        // 自动解锁暂停、重启计时器
+        if (scene.name == "Demo")
+        {
+            if (gameTimer != null)
+                gameTimer.ResetAndStart();
+
+            isPaused = false;
+            IsGamePaused = false;
+            Time.timeScale = 1f;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+            if (pauseMenuController != null && pauseMenuController.pauseMenu != null)
+                pauseMenuController.pauseMenu.SetActive(false);
+        }
     }
 
     void StartTime()
@@ -119,11 +129,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // 将 TogglePause 方法的访问修饰符从 private 改为 public
     public void TogglePause()
     {
         isPaused = !isPaused;
-        pauseMenu.SetActive(isPaused);
+        pauseMenuController.pauseMenu.SetActive(isPaused);
         IsGamePaused = isPaused; // 更新全局暂停状态
 
         if (isPaused)
@@ -139,19 +148,4 @@ public class GameManager : MonoBehaviour
             Cursor.visible = false;
         }
     }
-
-    // 点击 TimeButton 的回调方法
-    //void OnTimeButtonClicked()
-    //{
-    //    if (gameTimer != null)
-    //    {
-    //        GameTimer.TimeExceptionType previousException = gameTimer.currentException;
-    //        if (gameTimer.currentException != GameTimer.TimeExceptionType.None)
-    //        {
-    //            gameTimer.currentException = GameTimer.TimeExceptionType.None; // 将异常类型设置为 None
-    //            Debug.Log($"解决时间异常，原异常类型: {previousException}");
-    //        }
-            
-    //    }
-    //}
 }

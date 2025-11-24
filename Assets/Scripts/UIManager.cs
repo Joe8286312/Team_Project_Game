@@ -14,6 +14,7 @@ public class UIManager : MonoBehaviour
     private void Start()
     {
         gameTimer = FindObjectOfType<GameTimer>();
+        //GameTimer timer = GameTimer.Instance;
     }
 
     private void Awake()
@@ -50,19 +51,5 @@ public class UIManager : MonoBehaviour
                 textFPS.color = Color.red;
         }
     }
-
-    //// 鼠标点击时间文本触发异常
-    //public void OnTimeTextClicked()
-    //{
-    //    if (gameTimer != null)
-    //    {
-    //        // 循环切换时间异常状态
-    //        int currentType = (int)gameTimer.currentException;
-    //        currentType = (currentType + 1) % System.Enum.GetValues(typeof(GameTimer.TimeExceptionType)).Length;
-    //        gameTimer.currentException = (GameTimer.TimeExceptionType)currentType;
-
-    //        Debug.Log($"当前时间异常：{gameTimer.currentException}");
-    //    }
-    //}
 
 }

@@ -810,9 +810,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b569039e637a7fe4688bae3280f3b5ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  textTimeButton: {fileID: 278743615}
   pauseMenu: {fileID: 922461127}
-  gameManager: {fileID: 2028400378}
-  gameTimer: {fileID: 2028400377}
+  gameManager: {fileID: 0}
+  gameTimer: {fileID: 609112937}
 --- !u!4 &140515853
 Transform:
   m_ObjectHideFlags: 0
@@ -821,12 +822,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 140515851}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 488.9928, y: 263.69257, z: -2.8322449}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -2.0072021, y: 10.692566, z: -2.8322449}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
+  m_Children:
+  - {fileID: 922461130}
+  m_Father: {fileID: 1249535346}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &150305447
 GameObject:
@@ -2179,6 +2181,51 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!1 &609112936
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 609112938}
+  - component: {fileID: 609112937}
+  m_Layer: 0
+  m_Name: GameTimer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &609112937
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 609112936}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20fea232a5589ce419ec257245b35e94, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentException: 0
+--- !u!4 &609112938
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 609112936}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 10.646166, y: 7.5875473, z: 26.393276}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &635214905
 GameObject:
   m_ObjectHideFlags: 0
@@ -2902,7 +2949,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 922461127}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 2.8322449}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2910,12 +2957,12 @@ RectTransform:
   - {fileID: 1140289060}
   - {fileID: 922863299}
   - {fileID: 496920963}
-  m_Father: {fileID: 1249535346}
+  m_Father: {fileID: 140515853}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 2.0072021, y: -10.692566}
+  m_SizeDelta: {x: 982, y: 506}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &922863298
 GameObject:
@@ -4146,7 +4193,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1955103005}
-  - {fileID: 922461130}
+  - {fileID: 140515853}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -6964,7 +7011,7 @@ MonoBehaviour:
   textInfo: {fileID: 1328250158}
   textTime: {fileID: 123975300}
   textFPS: {fileID: 1668305931}
-  gameTimer: {fileID: 2028400377}
+  gameTimer: {fileID: 0}
 --- !u!224 &1955103005
 RectTransform:
   m_ObjectHideFlags: 0
@@ -6997,7 +7044,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2028400379}
   - component: {fileID: 2028400378}
-  - component: {fileID: 2028400377}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -7005,19 +7051,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &2028400377
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2028400376}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 20fea232a5589ce419ec257245b35e94, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  currentException: 6
 --- !u!114 &2028400378
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7032,10 +7065,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   collection: 0
   gameLevel: 1
-  textTimeButton: {fileID: 278743615}
-  ui: {fileID: 1955103004}
-  gameTimer: {fileID: 2028400377}
-  pauseMenu: {fileID: 922461127}
+  ui: {fileID: 0}
+  gameTimer: {fileID: 0}
+  pauseMenuController: {fileID: 0}
 --- !u!4 &2028400379
 Transform:
   m_ObjectHideFlags: 0
@@ -7556,4 +7588,4 @@ SceneRoots:
   - {fileID: 1249535346}
   - {fileID: 1903848794}
   - {fileID: 2028400379}
-  - {fileID: 140515853}
+  - {fileID: 609112938}
