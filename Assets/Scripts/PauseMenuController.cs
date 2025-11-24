@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -7,75 +5,55 @@ using UnityEngine.SceneManagement;
 public class PauseMenuController : MonoBehaviour
 {
     public TextMeshProUGUI textTimeButton;
-    public GameObject pauseMenu;         // 关联PauseMenu对象
-    //public GameManager gameManager;      // 可选，如果需要
-    public GameTimer gameTimer;          // 可选，如果需要
+    public GameObject pauseMenu;
+
+    // --- 修改点 1: 移除对GameManager和GameTimer的直接公共引用 ---
+    // public GameManager gameManager;
+    // public GameTimer gameTimer;
 
     private void Awake()
     {
-
-        // 初始隐藏菜单界面
+        // 游戏开始时，暂停菜单默认是关闭的
         if (pauseMenu != null)
             pauseMenu.SetActive(false);
-
-        //// 不要依赖 Inspector，而是主动查找
-        //if (gameManager == null)
-        //{
-        //    gameManager = FindObjectOfType<GameManager>();
-        //}
-
-        // 不要依赖 Inspector，而是主动查找
-        if (gameTimer == null)
-        {
-            gameTimer = FindObjectOfType<GameTimer>();
-        }
-
     }
 
+    /// <summary>
+    /// 更新暂停菜单中的时间显示
+    /// </summary>
     public void UpdateTime(string time)
     {
         if (textTimeButton != null)
             textTimeButton.text = time;
     }
 
-    // “继续游戏”按钮功能（ButtonContinue）
+    // "继续游戏"按钮的响应方法
     public void OnContinueButtonClicked()
     {
-        // 直接调用你 GameManager 的 TogglePause 或更直接的恢复方法
+        // --- 修改点 2: 通过GameManager单例来控制暂停 ---
         if (GameManager.Instance != null)
         {
-            //gameManager.TogglePause();
             GameManager.Instance.TogglePause();
         }
-        else
-        {
-            //// 手动恢复状态（保险方案，不推荐长期用）
-            //Time.timeScale = 1f;
-            //Cursor.lockState = CursorLockMode.Locked;
-            //Cursor.visible = false;
-            //if (pauseMenu != null) pauseMenu.SetActive(false);
-            //GameManager.IsGamePaused = false;
-        }
     }
 
-    // “返回菜单”按钮（ButtonMenu）
+    // "返回菜单"按钮的响应方法
     public void OnMenuButtonClicked()
     {
-        Time.timeScale = 1f; // 回到菜单前确保时间恢复
-        SceneManager.LoadScene("DemoMenu"); // 你的菜单场景名，根据实际情况调整
+        // --- 修改点 3: 在返回菜单前，确保时间恢复正常 ---
+        // GameManager的OnSceneLoaded会处理菜单场景的光标和时间暂停
+        SceneManager.LoadScene("DemoMenu");
     }
 
-    // “异常解除”功能（ButtonTime）原本在GameManager里，提取到这里
+    // "消除异常"按钮的响应方法
     public void OnTimeButtonClicked()
     {
-        if (gameTimer != null)
+        // --- 修改点 4: 通过GameTimer单例来重置异常状态 ---
+        if (GameTimer.Instance != null && GameTimer.Instance.currentException != GameTimer.TimeExceptionType.None)
         {
-            GameTimer.TimeExceptionType previousException = gameTimer.currentException;
-            if (gameTimer.currentException != GameTimer.TimeExceptionType.None)
-            {
-                gameTimer.currentException = GameTimer.TimeExceptionType.None; // 解除异常
-                Debug.Log($"异常解除，原异常类型: {previousException}");
-            }
+            GameTimer.TimeExceptionType previousException = GameTimer.Instance.currentException;
+            GameTimer.Instance.currentException = GameTimer.TimeExceptionType.None;
+            Debug.Log($"异常已手动清除。原异常: {previousException}");
         }
     }
 }
