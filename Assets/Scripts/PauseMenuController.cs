@@ -8,7 +8,7 @@ public class PauseMenuController : MonoBehaviour
 {
     public TextMeshProUGUI textTimeButton;
     public GameObject pauseMenu;         // 关联PauseMenu对象
-    public GameManager gameManager;      // 可选，如果需要
+    //public GameManager gameManager;      // 可选，如果需要
     public GameTimer gameTimer;          // 可选，如果需要
 
     private void Awake()
@@ -18,10 +18,16 @@ public class PauseMenuController : MonoBehaviour
         if (pauseMenu != null)
             pauseMenu.SetActive(false);
 
+        //// 不要依赖 Inspector，而是主动查找
+        //if (gameManager == null)
+        //{
+        //    gameManager = FindObjectOfType<GameManager>();
+        //}
+
         // 不要依赖 Inspector，而是主动查找
-        if (gameManager == null)
+        if (gameTimer == null)
         {
-            gameManager = FindObjectOfType<GameManager>();
+            gameTimer = FindObjectOfType<GameTimer>();
         }
 
     }
@@ -36,9 +42,10 @@ public class PauseMenuController : MonoBehaviour
     public void OnContinueButtonClicked()
     {
         // 直接调用你 GameManager 的 TogglePause 或更直接的恢复方法
-        if (gameManager != null)
+        if (GameManager.Instance != null)
         {
-            gameManager.TogglePause();
+            //gameManager.TogglePause();
+            GameManager.Instance.TogglePause();
         }
         else
         {

@@ -84,8 +84,7 @@ public class GameManager : MonoBehaviour
         //    pauseMenuController.gameManager = this;                   // for cross reference
         //}
 
-        if (pauseMenuController != null)
-            pauseMenuController.gameManager = this;
+        
 
         // 自动解锁暂停、重启计时器
         if (scene.name == "Demo")
