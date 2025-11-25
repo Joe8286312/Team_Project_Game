@@ -53,6 +53,7 @@ public class PauseMenuController : MonoBehaviour
         {
             GameTimer.TimeExceptionType previousException = GameTimer.Instance.currentException;
             GameTimer.Instance.currentException = GameTimer.TimeExceptionType.None;
+            LevelManager.Instance.RecordExceptionDiscovered();
             Debug.Log($"异常已手动清除。原异常: {previousException}");
         }
     }

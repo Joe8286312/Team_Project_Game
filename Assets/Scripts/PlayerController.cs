@@ -87,12 +87,38 @@ public class PlayerController : MonoBehaviour
     // 将所有异常处理逻辑整合到一个方法中
     private void HandleExceptionInteraction()
     {
-        // E键交互
-        if (currentException != null && Input.GetKeyDown(KeyCode.E) && !recordedExceptions.Contains(currentException))
+        //// E键交互
+        //if (currentException != null && Input.GetKeyDown(KeyCode.E) && !recordedExceptions.Contains(currentException))
+        //{
+        //    recordedExceptions.Add(currentException);
+        //    Debug.Log("已记录异常: " + currentException.name);
+        //}
+
+        // E键交互 - 改为关卡交互
+        if (Input.GetKeyDown(KeyCode.E))
         {
-            recordedExceptions.Add(currentException);
-            Debug.Log("已记录异常: " + currentException.name);
+            if (LevelManager.Instance != null)
+            {
+                LevelManager.Instance.OnInteractKeyPressed();
+            }
         }
+
+        //// E键交互
+        //if (currentException != null && Input.GetKeyDown(KeyCode.E) && !recordedExceptions.Contains(currentException))
+        //{
+        //    recordedExceptions.Add(currentException);
+        //    Debug.Log("已记录异常: " + currentException.name);
+
+        //    // 添加安全检查
+        //    if (LevelManager.Instance != null)
+        //    {
+        //        LevelManager.Instance.RecordExceptionDiscovered();
+        //    }
+        //    else
+        //    {
+        //        Debug.LogWarning("LevelManager 实例未找到，无法记录异常。");
+        //    }
+        //}
 
         // 视觉检测
         Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
@@ -108,6 +134,7 @@ public class PlayerController : MonoBehaviour
             if (seeTimer >= seeDuration && !seenExceptions.Contains(currentlySeenException))
             {
                 seenExceptions.Add(currentlySeenException);
+                LevelManager.Instance.RecordExceptionDiscovered();
                 Debug.Log("记录视觉异常: " + currentlySeenException.name);
             }
         }
@@ -134,6 +161,7 @@ public class PlayerController : MonoBehaviour
                 if (listenTimer >= listenDuration && !listenedExceptions.Contains(listeningException))
                 {
                     listenedExceptions.Add(listeningException);
+                    LevelManager.Instance.RecordExceptionDiscovered();
                     Debug.Log("记录听觉异常: " + listeningException.name);
                 }
                 break;
