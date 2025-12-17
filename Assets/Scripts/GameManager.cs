@@ -5,16 +5,14 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    public int collection = 0;
-    public int gameLevel = 1;
-
-    // ÒıÓÃUIºÍ¿ØÖÆÆ÷
+    [Header("UI References")]
     public UIManager ui;
     public PauseMenuController pauseMenuController;
-    // --- ĞŞ¸Äµã 1: ÒÆ³ıÁË¶Ô GameTimer µÄ¹«¹²ÒıÓÃ ---
-    // public GameTimer gameTimer;
 
-    // FPS¼ÆËãÏà¹Ø±äÁ¿
+    [Tooltip("èƒœåˆ©ç•Œé¢")]
+    public GameObject victoryUIPanel;
+
+    // FPS è®¡ç®—ç›¸å…³
     private float deltaTime = 0.0f;
     private float fpsUpdateInterval = 0.5f;
     private float fpsTimer = 0.0f;
@@ -35,8 +33,34 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        ui = FindObjectOfType<UIManager>();
+        pauseMenuController = FindObjectOfType<PauseMenuController>();
+
+        if (scene.name == "DemoMenu")
+        {
+            UnlockCursor();
+            if (victoryUIPanel != null) victoryUIPanel.SetActive(false);
+        }
+        else
+        {
+            if (victoryUIPanel == null || !victoryUIPanel.activeSelf)
+            {
+                ResumeGame();
+            }
+        }
+    }
+
     void Update()
     {
+        if (victoryUIPanel != null && victoryUIPanel.activeSelf) return;
+
         if (SceneManager.GetActiveScene().name != "DemoMenu")
         {
             if (Input.GetKeyDown(KeyCode.Escape))
@@ -47,68 +71,58 @@ public class GameManager : MonoBehaviour
 
         if (!IsGamePaused)
         {
-            // --- ĞŞ¸Äµã 2: Ê¹ÓÃ GameTimer.Instance ·ÃÎÊ¼ÆÊ±Æ÷ ---
-            // È·±£ GameTimer ÊµÀı´æÔÚ
-            if (GameTimer.Instance != null && ui != null && pauseMenuController != null)
+            // --- ä¿®æ”¹ç‚¹ï¼šä½¿ç”¨ GetDisplayTime è·å–è™šå‡æ—¶é—´ ---
+            if (GameTimer.Instance != null && ui != null)
             {
-                float elapsedTime = GameTimer.Instance.GetElapsedTime();
-                ui.UpdateTime(elapsedTime);
-                pauseMenuController.UpdateTime(GameTimer.FormatTime(elapsedTime));
+                // è¿™é‡Œè·å–çš„æ˜¯å¯èƒ½è¢«å¼‚å¸¸æ‰­æ›²è¿‡çš„æ—¶é—´
+                float displayTime = GameTimer.Instance.GetDisplayTime();
+                ui.UpdateTime(displayTime);
+
+                if (pauseMenuController != null)
+                    pauseMenuController.UpdateTime(GameTimer.FormatTime(displayTime));
             }
             UpdateFPS();
         }
     }
 
-    private void OnDestroy()
+    public void ShowVictory()
     {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
+        IsGamePaused = true;
+        Time.timeScale = 0f;
+
+        if (victoryUIPanel != null)
+        {
+            victoryUIPanel.SetActive(true);
+        }
+        UnlockCursor();
     }
 
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    public void ReturnToMainMenu()
     {
-        ui = FindObjectOfType<UIManager>();
-        pauseMenuController = FindObjectOfType<PauseMenuController>();
+        IsGamePaused = false;
+        Time.timeScale = 1f;
 
-        if (scene.name.StartsWith("Demo") && scene.name != "DemoMenu")
-        {
-            if (scene.name == "Demo")
-            {
-                // --- ĞŞ¸Äµã 3: Ê¹ÓÃ GameTimer.Instance ---
-                if (GameTimer.Instance != null)
-                    GameTimer.Instance.ResetAndStart();
-            }
-            ResumeGame();
-        }
-        else if (scene.name == "DemoMenu")
-        {
-            PauseGame(false);
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
+        if (victoryUIPanel != null)
+            victoryUIPanel.SetActive(false);
+
+        SceneManager.LoadScene("DemoMenu");
     }
 
     public void TogglePause()
     {
-        if (IsGamePaused)
-        {
-            ResumeGame();
-        }
-        else
-        {
-            PauseGame(true);
-        }
+        if (IsGamePaused) ResumeGame();
+        else PauseGame();
     }
 
-    private void PauseGame(bool showPauseMenu)
+    private void PauseGame()
     {
         IsGamePaused = true;
         Time.timeScale = 0f;
-        if (showPauseMenu && pauseMenuController != null)
+        if (pauseMenuController != null)
         {
             pauseMenuController.pauseMenu.SetActive(true);
         }
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        UnlockCursor();
     }
 
     public void ResumeGame()
@@ -119,6 +133,17 @@ public class GameManager : MonoBehaviour
         {
             pauseMenuController.pauseMenu.SetActive(false);
         }
+        LockCursor();
+    }
+
+    private void UnlockCursor()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
+    private void LockCursor()
+    {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }

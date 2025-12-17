@@ -1,21 +1,31 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class Manu : MonoBehaviour
+public class MenuController : MonoBehaviour
 {
-    // ¿ªÊ¼ÓÎÏ·°´Å¥
     public void StartGame()
     {
-        // --- ĞŞ¸Äµã 1: Âß¼­¼ò»¯ ---
-        // Ö±½Ó¼ÓÔØµÚÒ»¸öÓÎÏ·³¡¾°£¬GameManager»áÔÚ³¡¾°¼ÓÔØºó´¦Àí¼ÆÊ±Æ÷ÖØÖÃ
-        SceneManager.LoadScene("Demo");
+        // 1. é‡ç½®æ—¶é—´ç®¡ç†å™¨
+        if (GameTimer.Instance != null)
+        {
+            GameTimer.Instance.FullReset();
+        }
+
+        // 2. å¯åŠ¨å…³å¡ç®¡ç†å™¨
+        if (LevelManager.Instance != null)
+        {
+            LevelManager.Instance.StartGame();
+        }
+        else
+        {
+            Debug.LogError("åœºæ™¯ä¸­æœªæ‰¾åˆ°LevelManagerï¼æ­£åœ¨å°è¯•ç›´æ¥åŠ è½½æ•™ç¨‹...");
+            SceneManager.LoadScene("Demo_Tutorial");
+        }
     }
 
-    // ÍË³öÓÎÏ·°´Å¥
     public void QuitGame()
     {
-        // ÔÚ±à¼­Æ÷Ä£Ê½ÏÂ£¬Application.Quit()²»Æğ×÷ÓÃ£¬Òò´ËÌí¼ÓÈÕÖ¾ÒÔ¹©µ÷ÊÔ
-        Debug.Log("ÍË³öÓÎÏ·");
+        Debug.Log("é€€å‡ºæ¸¸æˆ");
         Application.Quit();
     }
 }

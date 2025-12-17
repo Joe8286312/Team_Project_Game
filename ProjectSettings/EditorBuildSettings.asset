@@ -12,6 +12,30 @@ EditorBuildSettings:
     path: Assets/Scenes/Demo.unity
     guid: b58a4cef5a364db419d1997ad6357f7d
   - enabled: 1
-    path: Assets/Scenes/Demo_1.unity
-    guid: 1405746b1c50333459bea231fbd320a5
+    path: Assets/Scenes/Demo 1.unity
+    guid: 126257f7b501c7d4dad4cac6437b8c9e
+  - enabled: 1
+    path: Assets/Scenes/Demo 2.unity
+    guid: edc62608c7689f048a217ff9555696b9
+  - enabled: 1
+    path: Assets/Scenes/Demo 3.unity
+    guid: 26b20998f76ade849940cdaadf90adeb
+  - enabled: 1
+    path: Assets/Scenes/Demo 4.unity
+    guid: e39b35f635d72d542b52d5ba5f842418
+  - enabled: 1
+    path: Assets/Scenes/Demo 5.unity
+    guid: cba14ddf332a0d049ab3ee44f300d9a5
+  - enabled: 1
+    path: Assets/Scenes/Demo 6.unity
+    guid: 93edcc21f27d9a247b7aad026e22d6f5
+  - enabled: 1
+    path: Assets/Scenes/Demo 7.unity
+    guid: 2aed48475b8d6324f86f55e44c652342
+  - enabled: 1
+    path: Assets/Scenes/Demo_Ending.unity
+    guid: dc54fbffc055f1049934614740ff28f8
+  - enabled: 1
+    path: Assets/Scenes/Demo_Tutorial.unity
+    guid: aa25ef1fb05bf224e8bd6e890cabac8f
   m_configObjects: {}

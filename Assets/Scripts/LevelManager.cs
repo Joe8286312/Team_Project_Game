@@ -1,46 +1,100 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 public class LevelManager : MonoBehaviour
 {
     public static LevelManager Instance { get; private set; }
 
-    [Header("¹Ø¿¨ÅäÖÃ")]
-    public List<LevelData> allLevels = new List<LevelData>();
-    public int tutorialLevelIndex = 0;
-    public int endingLevelIndex = 8;
+    [Header("åœºæ™¯é…ç½®")]
+    [Tooltip("æ‰€æœ‰éæ•™ç¨‹ã€éç»ˆç‚¹çš„å¾ªç¯å…³å¡æ•°æ®éƒ½æ”¾åœ¨è¿™é‡Œ")]
+    public List<LevelData> allPuzzleLevels = new List<LevelData>();
 
-    [Header("UIÒıÓÃ")]
-    public Text levelDisplayText;
+    [Tooltip("æ•™ç¨‹å…³å¡çš„åœºæ™¯åç§°")]
+    public string tutorialSceneName = "Demo_Tutorial";
 
-    // ¹Ø¿¨ÁĞ±í
-    private List<LevelData> totalLevelList1 = new List<LevelData>();
-    private List<LevelData> totalLevelList2 = new List<LevelData>();
-    private List<LevelData> easyLevels = new List<LevelData>();
-    private List<LevelData> mediumLevels = new List<LevelData>();
-    private List<LevelData> hardLevels = new List<LevelData>();
+    [Tooltip("ç»ˆç‚¹å…³å¡çš„åœºæ™¯åç§°")]
+    public string endingSceneName = "Demo_Ending";
 
-    // µ±Ç°¹Ø¿¨×´Ì¬
-    private int currentLevelIndex = -1;
-    private LevelData currentLevelData;
-    private int discoveredExceptions = 0;
-    private bool skipTutorial = false;
+    // æ–°å¢ï¼šæ­»äº¡åœºæ™¯æˆ–UIé¢æ¿
+    [Tooltip("æ­»äº¡åœºæ™¯æˆ–UIé¢æ¿")]
+    public string deathSceneName = "Demo_Death";
 
-    //void Awake()
-    //{
-    //    if (Instance == null)
-    //    {
-    //        Instance = this;
-    //        DontDestroyOnLoad(gameObject);
-    //        InitializeLevelSystem();
-    //    }
-    //    else
-    //    {
-    //        Destroy(gameObject);
-    //    }
-    //}
+    [Header("æ¸¸æˆè§„åˆ™")]
+    [Tooltip("ç¬¬å‡ å±‚æ˜¯ç»ˆç‚¹å±‚ï¼ˆä¾‹å¦‚8ï¼‰")]
+    public int endingFloorIndex = 8;
+
+    // --- æ–°å¢ï¼šé“å…·æ”¶é›†ç³»ç»Ÿ ---
+    [Header("Collection System")]
+    [SerializeField] private int collectedPhotos = 0;
+    public int totalPhotosNeeded = 6;
+
+    [Header("å½“å‰çŠ¶æ€ (åªè¯»)")]
+    [SerializeField] private int currentFloor = 1; // 1=æ•™ç¨‹, 2-7=å¾ªç¯, 8=ç»ˆç‚¹
+    [SerializeField] private LevelData currentLevelData;
+    [SerializeField] private int foundAnomalies = 0;
+
+    // --- å†…éƒ¨ç±»ï¼šè´Ÿè´£åŒåˆ—è¡¨ç¼“å†²é€»è¾‘ ---
+    [System.Serializable]
+    private class DifficultyPool
+    {
+        public List<LevelData> activeList = new List<LevelData>();
+        public List<LevelData> reserveList = new List<LevelData>();
+
+        // åˆå§‹åŒ–ï¼šæŠŠæ‰€æœ‰è¯¥éš¾åº¦çš„å…³å¡æ”¾å…¥ activeList å¹¶ä¹±åº
+        public void Initialize(List<LevelData> source)
+        {
+            activeList = new List<LevelData>(source);
+            reserveList.Clear();
+            Shuffle(activeList);
+        }
+
+        // æ ¸å¿ƒé€»è¾‘ï¼šå–å‡ºä¸€ä¸ªï¼Œå­˜å…¥å¤‡ç”¨ï¼Œå¦‚æœç©ºäº†åˆ™äº¤æ¢
+        public LevelData GetNextLevel()
+        {
+            if (activeList.Count == 0)
+            {
+                // å¦‚æœ active ç©ºäº†ï¼Œè¯´æ˜ä¸€è½®å¾ªç¯ç»“æŸ
+                // å°† reserve é‡Œçš„å…¨éƒ¨è½¬æ­£ï¼Œå¹¶ä¹±åº
+                if (reserveList.Count == 0)
+                {
+                    Debug.LogError("ä¸¥é‡é”™è¯¯ï¼šæ²¡æœ‰å¯ç”¨çš„å…³å¡æ•°æ®ï¼");
+                    return null;
+                }
+
+                // äº¤æ¢åˆ—è¡¨å¼•ç”¨
+                activeList = new List<LevelData>(reserveList);
+                reserveList.Clear();
+                Shuffle(activeList);
+                Debug.Log("ã€å…³å¡æ± ã€‘åˆ—è¡¨è€—å°½ï¼Œå·²é‡ç½®å¹¶ä¹±åºå¤‡ç”¨åˆ—è¡¨");
+            }
+
+            // å–å‡ºç¬¬ä¸€ä¸ª
+            LevelData selected = activeList[0];
+            activeList.RemoveAt(0);
+
+            // æ”¾å…¥å¤‡ç”¨åˆ—è¡¨
+            reserveList.Add(selected);
+
+            return selected;
+        }
+
+        private void Shuffle(List<LevelData> list)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                LevelData temp = list[i];
+                int rnd = Random.Range(i, list.Count);
+                list[i] = list[rnd];
+                list[rnd] = temp;
+            }
+        }
+    }
+
+    // å®ä¾‹åŒ–ä¸‰ä¸ªéš¾åº¦çš„æ± å­
+    private DifficultyPool easyPool = new DifficultyPool();
+    private DifficultyPool mediumPool = new DifficultyPool();
+    private DifficultyPool hardPool = new DifficultyPool();
 
     void Awake()
     {
@@ -48,13 +102,8 @@ public class LevelManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            InitializeLevelSystem();
-
-            // ÉèÖÃÄ¬ÈÏ¹Ø¿¨£¨Èç¹ûĞèÒª£©
-            if (allLevels.Count > 0 && currentLevelData == null)
-            {
-                currentLevelData = allLevels[0];
-            }
+            InitializeGameData();
+            SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else
         {
@@ -62,418 +111,230 @@ public class LevelManager : MonoBehaviour
         }
     }
 
-    void Start()
+    void OnDestroy()
     {
-        UpdateLevelDisplay();
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    /// <summary>
-    /// ³õÊ¼»¯¹Ø¿¨ÏµÍ³
-    /// </summary>
-    private void InitializeLevelSystem()
+    // æ¯æ¬¡åŠ è½½æ–°åœºæ™¯æ—¶é‡ç½®ç©å®¶çŠ¶æ€
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Çå¿ÕËùÓĞÁĞ±í
-        totalLevelList1.Clear();
-        totalLevelList2.Clear();
-        easyLevels.Clear();
-        mediumLevels.Clear();
-        hardLevels.Clear();
+        // æ¸…ç†ç©å®¶èº«ä¸Šçš„æ£€æµ‹è®°å½•
+        var detector = FindObjectOfType<PlayerAnomalyDetector>();
+        if (detector) detector.ClearRecords();
 
-        // Ìí¼ÓËùÓĞ¹Ø¿¨µ½×ÜÁĞ±í1
-        totalLevelList1.AddRange(allLevels);
+        var interactor = FindObjectOfType<PlayerInteract>();
+        if (interactor) interactor.ClearRecords();
+    }
 
-        // °´ÄÑ¶È·ÖÀà
-        foreach (LevelData level in allLevels)
+    // æ¸¸æˆå¯åŠ¨æ—¶åˆ†ç±»å¹¶åˆå§‹åŒ–æ± å­
+    private void InitializeGameData()
+    {
+        List<LevelData> allEasy = new List<LevelData>();
+        List<LevelData> allMedium = new List<LevelData>();
+        List<LevelData> allHard = new List<LevelData>();
+
+        foreach (var level in allPuzzleLevels)
         {
             switch (level.difficulty)
             {
-                case LevelDifficulty.Easy:
-                    easyLevels.Add(level);
-                    break;
-                case LevelDifficulty.Medium:
-                    mediumLevels.Add(level);
-                    break;
-                case LevelDifficulty.Hard:
-                    hardLevels.Add(level);
-                    break;
+                case LevelDifficulty.Easy: allEasy.Add(level); break;
+                case LevelDifficulty.Medium: allMedium.Add(level); break;
+                case LevelDifficulty.Hard: allHard.Add(level); break;
             }
         }
 
-        // ¶Ô¸÷¸öÄÑ¶ÈÁĞ±í½øĞĞÂÒĞò
-        ShuffleList(easyLevels);
-        ShuffleList(mediumLevels);
-        ShuffleList(hardLevels);
+        easyPool.Initialize(allEasy);
+        mediumPool.Initialize(allMedium);
+        hardPool.Initialize(allHard);
 
-        Debug.Log($"¹Ø¿¨ÏµÍ³³õÊ¼»¯Íê³É - Ò×: {easyLevels.Count}¹Ø, ÖĞ: {mediumLevels.Count}¹Ø, ÄÑ: {hardLevels.Count}¹Ø");
+        Debug.Log($"åˆå§‹åŒ–å®Œæˆï¼šæ˜“({allEasy.Count}) ä¸­({allMedium.Count}) éš¾({allHard.Count})");
     }
 
-    /// <summary>
-    /// ´¦ÀíE¼ü½»»¥£¬ÅĞ¶Ï½øÈëÄÄÒ»¹Ø
-    /// </summary>
-    public void OnInteractKeyPressed()
+    // --- æ–°å¢ï¼šæ”¶é›†é“å…·çš„æ–¹æ³• ---
+    public void CollectPhotoFragment()
     {
-        if (currentLevelIndex == -1)
+        collectedPhotos++;
+        Debug.Log($"æ”¶é›†åˆ°ç›¸ç‰‡ç¢ç‰‡: {collectedPhotos}/{totalPhotosNeeded}");
+    }
+
+    // --- æ–°å¢ï¼šå¤„ç†ç‰¹æ®Šé—¨ï¼ˆException_Eï¼‰çš„äº¤äº’é€»è¾‘ ---
+    public void HandleSpecialDoorInteraction()
+    {
+        // 1. å¦‚æœå½“å‰æ˜¯ç»ˆç‚¹å…³ (Floor 8)
+        if (currentFloor >= endingFloorIndex)
         {
-            // Ê×´Î½øÈëÓÎÏ·
-            if (skipTutorial)
+            if (collectedPhotos >= totalPhotosNeeded)
             {
-                EnterLevel(GetNextLevelIndex());
+                TriggerHappyEnding();
             }
             else
             {
-                EnterLevel(tutorialLevelIndex);
+                TriggerBadEnding();
             }
         }
+        // 2. å¦‚æœæ˜¯éç»ˆç‚¹å…³ (Floor 1-7)
         else
         {
-            // ÅĞ¶ÏÊÇ·ñËùÓĞÒì³£¶¼ÒÑ·¢ÏÖ
-            if (currentLevelData != null && discoveredExceptions >= currentLevelData.totalExceptions)
-            {
-                // ËùÓĞÒì³£ÒÑ·¢ÏÖ£¬½øÈëÏÂÒ»¹Ø
-                int nextLevel = GetNextLevelIndex();
-                EnterLevel(nextLevel);
-            }
-            else
-            {
-                // Î´·¢ÏÖËùÓĞÒì³££¬½øÈëµÚ2¹ØÖØÍ·¿ªÊ¼
-                EnterLevel(2);
-            }
+            TriggerDeath();
         }
     }
 
-    ///// <summary>
-    ///// ½øÈëÖ¸¶¨¹Ø¿¨
-    ///// </summary>
-    //public void EnterLevel(int levelIndex)
-    //{
-    //    if (levelIndex < 0 || levelIndex >= allLevels.Count)
-    //    {
-    //        Debug.LogError($"ÎŞĞ§µÄ¹Ø¿¨Ë÷Òı: {levelIndex}");
-    //        return;
-    //    }
+    private void TriggerHappyEnding()
+    {
+        Debug.Log("ç»“å±€ï¼šHappy End (ç›¸ç‰‡é›†é½)");
+        // å¯ä»¥åœ¨è¿™é‡ŒåŠ è½½ç‰¹å®šçš„Happy Endåœºæ™¯æˆ–æ˜¾ç¤ºUI
+        // GameManager.Instance.ShowVictory(); // æˆ–è€…ä½¿ç”¨ä¸“é—¨çš„ HappyEnd UI
+        SceneManager.LoadScene("Scene_HappyEnd");
+    }
 
-    //    currentLevelIndex = levelIndex;
-    //    currentLevelData = allLevels[levelIndex];
-    //    discoveredExceptions = 0;
+    private void TriggerBadEnding()
+    {
+        Debug.Log("ç»“å±€ï¼šBad End (ç›¸ç‰‡æœªé›†é½)");
+        // å¯ä»¥åœ¨è¿™é‡ŒåŠ è½½ç‰¹å®šçš„Bad Endåœºæ™¯æˆ–æ˜¾ç¤ºUI
+        SceneManager.LoadScene("Scene_BadEnd");
+    }
 
-    //    // ´ÓÏàÓ¦ÁĞ±íÖĞÒÆ³ıµ±Ç°¹Ø¿¨£¨Èç¹û´æÔÚ£©
-    //    RemoveLevelFromLists(currentLevelData);
+    private void TriggerDeath()
+    {
+        Debug.Log("è§¦å‘æ­»äº¡ï¼šåœ¨éç»ˆç‚¹å…³æ‰“å¼€äº†é—¨");
+        // åŠ è½½æ­»äº¡åœºæ™¯ï¼Œæˆ–è€…è°ƒç”¨ GameManager æ˜¾ç¤ºæ­»äº¡ UI
+        SceneManager.LoadScene(deathSceneName);
+        // æˆ–è€…: GameManager.Instance.ShowDeathUI();
+    }
 
-    //    // ¼ÓÔØ³¡¾°
-    //    SceneManager.LoadScene(currentLevelData.sceneName);
+    // --- å¤–éƒ¨è°ƒç”¨å…¥å£ ---
 
-    //    // ¸üĞÂUIÏÔÊ¾
-    //    UpdateLevelDisplay();
-
-    //    Debug.Log($"½øÈë¹Ø¿¨: {currentLevelData.levelName} {currentLevelData.sceneName} (ÄÑ¶È: {currentLevelData.difficulty})");
-    //}
+    public void StartGame()
+    {
+        currentFloor = 1; // æ•™ç¨‹å…³
+        LoadLevelByFloorIndex();
+    }
 
     /// <summary>
-    /// ½øÈëÖ¸¶¨¹Ø¿¨
+    /// å½“ç©å®¶å‘ç°äº†å¼‚å¸¸æ—¶è°ƒç”¨
     /// </summary>
-    public void EnterLevel(int levelIndex)
+    public void ReportAnomalyFound()
     {
-        if (levelIndex < 0 || levelIndex >= allLevels.Count)
+        //// ç»ˆç‚¹å…³ä¸è®°å½•å¼‚å¸¸
+        //if (currentFloor >= endingFloorIndex) return;
+
+        foundAnomalies++;
+        int total = currentLevelData != null ? currentLevelData.totalExceptions : 0;
+        Debug.Log($"å¼‚å¸¸è¿›åº¦: {foundAnomalies}/{total}");
+    }
+
+    /// <summary>
+    /// ç©å®¶æŒ‰ä¸‹Eé”®ä¸”å°„çº¿æ£€æµ‹é€šè¿‡åè°ƒç”¨æ­¤æ–¹æ³•
+    /// </summary>
+    public void AttemptTransition()
+    {
+        Debug.Log($"å°è¯•è¿‡å…³æ£€æŸ¥ã€‚å½“å‰å±‚: {currentFloor}");
+
+        // 1. æ•™ç¨‹å…³ (Floor 1): ç›´æ¥é€šè¿‡
+        if (currentFloor == 1)
         {
-            Debug.LogError($"ÎŞĞ§µÄ¹Ø¿¨Ë÷Òı: {levelIndex}");
+            GoToNextFloor();
             return;
         }
 
-        currentLevelIndex = levelIndex;
-        currentLevelData = allLevels[levelIndex];
-        discoveredExceptions = 0;
-
-        // ´ÓÏàÓ¦ÁĞ±íÖĞÒÆ³ıµ±Ç°¹Ø¿¨£¨Èç¹û´æÔÚ£©
-        RemoveLevelFromLists(currentLevelData);
-
-        // ¸ù¾İ³¡¾°Ãû³Æ¼ÓÔØ³¡¾°
-        if (!string.IsNullOrEmpty(currentLevelData.sceneName))
+        // 2. ç»ˆç‚¹å…³ (Floor >= 8): æŒ‰ç†åº”è¯¥æ— å¼‚å¸¸ï¼Œä½†æ˜¯ç©å®¶ä»äº¤äº’è¯¥æŒ‰é’®ï¼Œè¯´æ˜è®¤ä¸ºå¾ªç¯åœºæ™¯æ¶ˆå¤±æ˜¯å¼‚å¸¸ï¼Œå¤±è´¥
+        if (currentFloor >= endingFloorIndex)
         {
-            SceneManager.LoadScene(currentLevelData.sceneName);
-        }
-        else
-        {
-            Debug.LogError($"¹Ø¿¨ {currentLevelData.levelName} µÄ³¡¾°Ãû³ÆÎª¿Õ£¡");
+            Debug.Log($"å·²è¾¾ç»ˆç‚¹å…³ï¼Œç©å®¶è®¤ä¸ºå¾ªç¯åœºæ™¯æ¶ˆå¤±æ˜¯å¼‚å¸¸ï¼Œæœªäº¤äº’æœ‹å‹å®¶é—¨ï¼Œé‡ç½®å›ç¬¬2å±‚ï¼");
+            ResetToLevel2();
             return;
         }
 
-        // ¸üĞÂUIÏÔÊ¾
-        UpdateLevelDisplay();
+        // 3. å¾ªç¯å…³å¡åˆ¤å®š (Floor 2-7)
+        // æ£€æŸ¥æ˜¯å¦æ‰¾é½äº†æ‰€æœ‰å¼‚å¸¸
+        int required = currentLevelData != null ? currentLevelData.totalExceptions : 0;
 
-        Debug.Log($"½øÈë¹Ø¿¨: {currentLevelData.levelName} (³¡¾°: {currentLevelData.sceneName}, ÄÑ¶È: {currentLevelData.difficulty})");
-    }
-
-    /// <summary>
-    /// Í¨¹ı³¡¾°Ãû³Æ½øÈë¹Ø¿¨
-    /// </summary>
-    public void EnterLevel(string sceneName)
-    {
-        // ²éÕÒ¶ÔÓ¦³¡¾°Ãû³ÆµÄ¹Ø¿¨Êı¾İ
-        LevelData targetLevel = allLevels.Find(level => level.sceneName == sceneName);
-
-        if (targetLevel != null)
+        if (foundAnomalies >= required)
         {
-            int levelIndex = allLevels.IndexOf(targetLevel);
-            EnterLevel(levelIndex);
+            // æˆåŠŸï¼šè¿›å…¥ä¸‹ä¸€å±‚
+            Debug.Log("å¼‚å¸¸å…¨éƒ¨å‘ç°ï¼Œè¿›å…¥ä¸‹ä¸€å±‚ï¼");
+            GoToNextFloor();
         }
         else
         {
-            Debug.LogError($"Î´ÕÒµ½³¡¾°ÃûÎª {sceneName} µÄ¹Ø¿¨Êı¾İ£¡");
+            // å¤±è´¥ï¼šé‡ç½®å›ç¬¬2å±‚
+            Debug.Log($"å¼‚å¸¸æœªæ‰¾å…¨ ({foundAnomalies}/{required})ï¼Œé‡ç½®å›ç¬¬2å±‚ï¼");
+            ResetToLevel2();
         }
     }
 
-    /// <summary>
-    /// »ñÈ¡ÏÂÒ»¸ö¹Ø¿¨µÄË÷Òı
-    /// </summary>
-    private int GetNextLevelIndex()
+    private void GoToNextFloor()
     {
-        // Èç¹ûµ±Ç°ÊÇ½Ì³Ì¹Ø£¬½øÈëÕıÊ½¹Ø¿¨Ñ¡Ôñ
-        if (currentLevelIndex == tutorialLevelIndex)
-        {
-            return GetLevelByDifficultyRules(2); // ´ÓµÚ2¹Ø¿ªÊ¼
-        }
-
-        // Èç¹ûµ±Ç°ÊÇ½á¾Ö¹Ø£¬»Øµ½²Ëµ¥»òÖØĞÂ¿ªÊ¼
-        if (currentLevelIndex == endingLevelIndex)
-        {
-            // ÕâÀï¿ÉÒÔ·µ»Øµ½Ö÷²Ëµ¥»òÖØĞÂ¿ªÊ¼ÓÎÏ·
-            return tutorialLevelIndex;
-        }
-
-        // ¸ù¾İÄÑ¶È¹æÔò»ñÈ¡ÏÂÒ»¹Ø
-        int nextLevel = GetLevelByDifficultyRules(currentLevelIndex + 1);
-
-        return nextLevel;
+        currentFloor++;
+        LoadLevelByFloorIndex();
     }
 
-    /// <summary>
-    /// ¸ù¾İÄÑ¶È¹æÔò»ñÈ¡¹Ø¿¨
-    /// </summary>
-    private int GetLevelByDifficultyRules(int expectedLevel)
+    private void ResetToLevel2()
     {
-        // Èç¹ûËùÓĞ¹Ø¿¨¶¼ÒÑ¾­ÌåÑé¹ıÒ»±é
-        if (totalLevelList1.Count == 0 && totalLevelList2.Count > 0)
+        currentFloor = 2; // å›åˆ°å¾ªç¯çš„èµ·ç‚¹
+        LoadLevelByFloorIndex();
+    }
+
+    private void LoadLevelByFloorIndex()
+    {
+        // é‡ç½®å½“å‰å…³å¡çŠ¶æ€
+        foundAnomalies = 0;
+        currentLevelData = null;
+
+        string sceneToLoad = "";
+
+        // é€»è¾‘åˆ¤å®šï¼šç¬¬å‡ å±‚å»å“ªä¸ªæ± å­æ‹¿æ•°æ®
+        if (currentFloor == 1)
         {
-            // ¶Ô×ÜÁĞ±í2½øĞĞÂÒĞò
-            if (totalLevelList2.Count > 1)
+            sceneToLoad = tutorialSceneName;
+        }
+        else if (currentFloor >= endingFloorIndex)
+        {
+            // åˆ°äº†ç»ˆç‚¹å±‚ï¼ŒåŠ è½½ç»ˆç‚¹åœºæ™¯
+            sceneToLoad = endingSceneName;
+        }
+        else
+        {
+            // å¾ªç¯å…³å¡é€»è¾‘
+            if (currentFloor >= 2 && currentFloor <= 3)
             {
-                ShuffleList(totalLevelList2);
+                currentLevelData = easyPool.GetNextLevel();
+            }
+            else if (currentFloor >= 4 && currentFloor <= 5)
+            {
+                currentLevelData = mediumPool.GetNextLevel();
+            }
+            else if (currentFloor >= 6 && currentFloor <= 7)
+            {
+                currentLevelData = hardPool.GetNextLevel();
             }
 
-            // ´Ó×ÜÁĞ±í2ÖĞ»ñÈ¡¹Ø¿¨
-            if (totalLevelList2.Count > 0)
-            {
-                LevelData nextLevel = totalLevelList2[0];
-                totalLevelList2.RemoveAt(0);
-                totalLevelList1.Add(nextLevel);
-                return allLevels.IndexOf(nextLevel);
-            }
-        }
-
-        // ¸ù¾İÔ¤ÆÚ¹Ø¿¨¾ö¶¨ÄÑ¶È
-        LevelDifficulty targetDifficulty = GetDifficultyByLevel(expectedLevel);
-
-        // ³¢ÊÔ´Ó¶ÔÓ¦ÄÑ¶ÈÁĞ±íÖĞ»ñÈ¡¹Ø¿¨
-        List<LevelData> targetList = GetLevelListByDifficulty(targetDifficulty);
-
-        if (targetList.Count > 0)
-        {
-            LevelData nextLevel = targetList[0];
-            targetList.RemoveAt(0);
-            totalLevelList2.Add(nextLevel);
-            return allLevels.IndexOf(nextLevel);
-        }
-
-        // Èç¹ûÄ¿±êÄÑ¶ÈÁĞ±íÎª¿Õ£¬³¢ÊÔÆäËûÄÑ¶È
-        foreach (LevelDifficulty difficulty in System.Enum.GetValues(typeof(LevelDifficulty)))
-        {
-            if (difficulty != targetDifficulty)
-            {
-                List<LevelData> fallbackList = GetLevelListByDifficulty(difficulty);
-                if (fallbackList.Count > 0)
-                {
-                    LevelData nextLevel = fallbackList[0];
-                    fallbackList.RemoveAt(0);
-                    totalLevelList2.Add(nextLevel);
-                    return allLevels.IndexOf(nextLevel);
-                }
-            }
-        }
-
-        // Èç¹ûËùÓĞÁĞ±í¶¼Îª¿Õ£¬»Øµ½½Ì³Ì¹Ø
-        Debug.LogWarning("ËùÓĞ¹Ø¿¨¶¼ÒÑÌåÑé£¬»Øµ½½Ì³Ì¹Ø");
-        return tutorialLevelIndex;
-    }
-
-    /// <summary>
-    /// ¸ù¾İ¹Ø¿¨Ë÷Òı»ñÈ¡ÄÑ¶È
-    /// </summary>
-    private LevelDifficulty GetDifficultyByLevel(int levelIndex)
-    {
-        if (levelIndex >= 2 && levelIndex <= 3) return LevelDifficulty.Easy;
-        if (levelIndex >= 4 && levelIndex <= 5) return LevelDifficulty.Medium;
-        if (levelIndex >= 6 && levelIndex <= 7) return LevelDifficulty.Hard;
-
-        return LevelDifficulty.Easy; // Ä¬ÈÏ
-    }
-
-    /// <summary>
-    /// ¸ù¾İÄÑ¶È»ñÈ¡¶ÔÓ¦µÄ¹Ø¿¨ÁĞ±í
-    /// </summary>
-    private List<LevelData> GetLevelListByDifficulty(LevelDifficulty difficulty)
-    {
-        switch (difficulty)
-        {
-            case LevelDifficulty.Easy: return easyLevels;
-            case LevelDifficulty.Medium: return mediumLevels;
-            case LevelDifficulty.Hard: return hardLevels;
-            default: return easyLevels;
-        }
-    }
-
-    /// <summary>
-    /// ´ÓËùÓĞÁĞ±íÖĞÒÆ³ıÖ¸¶¨¹Ø¿¨
-    /// </summary>
-    private void RemoveLevelFromLists(LevelData level)
-    {
-        totalLevelList1.Remove(level);
-        easyLevels.Remove(level);
-        mediumLevels.Remove(level);
-        hardLevels.Remove(level);
-    }
-
-    ///// <summary>
-    ///// ¼ÇÂ¼·¢ÏÖµÄÒì³£
-    ///// </summary>
-    //public void RecordExceptionDiscovered()
-    //{
-    //    discoveredExceptions++;
-    //    Debug.Log($"·¢ÏÖÒì³£: {discoveredExceptions}/{currentLevelData.totalExceptions}");
-
-    //    // ¿ÉÒÔÔÚÕâÀï´¥·¢UI¸üĞÂ»òÆäËûÂß¼­
-    //}
-
-    /// <summary>
-    /// ¼ÇÂ¼·¢ÏÖµÄÒì³£
-    /// </summary>
-    public void RecordExceptionDiscovered()
-    {
-        // Ìí¼Ó°²È«¼ì²é
-        if (currentLevelData == null)
-        {
-            Debug.LogWarning("³¢ÊÔ¼ÇÂ¼Òì³££¬µ«µ±Ç°Ã»ÓĞ¼¤»îµÄ¹Ø¿¨Êı¾İ¡£");
-            return;
-        }
-
-        discoveredExceptions++;
-        Debug.Log($"·¢ÏÖÒì³£: {discoveredExceptions}/{currentLevelData.totalExceptions}");
-
-        // ¸üĞÂUIÏÔÊ¾
-        UpdateLevelDisplay();
-
-        // ¿ÉÒÔÔÚÕâÀï´¥·¢ÆäËûÂß¼­£¬±ÈÈç¼ì²éÊÇ·ñ·¢ÏÖËùÓĞÒì³£
-        CheckAllExceptionsDiscovered();
-    }
-
-    /// <summary>
-    /// ¼ì²éÊÇ·ñ·¢ÏÖÁËËùÓĞÒì³£
-    /// </summary>
-    private void CheckAllExceptionsDiscovered()
-    {
-        if (currentLevelData != null && discoveredExceptions >= currentLevelData.totalExceptions)
-        {
-            Debug.Log($"ÒÑ·¢ÏÖËùÓĞ {currentLevelData.totalExceptions} ¸öÒì³££¡");
-            // ¿ÉÒÔÔÚÕâÀï´¥·¢Íê³É¹Ø¿¨µÄÂß¼­
-        }
-    }
-
-    /// <summary>
-    /// ÉèÖÃÌø¹ı½Ì³Ì
-    /// </summary>
-    public void SetSkipTutorial(bool skip)
-    {
-        skipTutorial = skip;
-        Debug.Log(skip ? "ÒÑÉèÖÃÌø¹ı½Ì³Ì¹Ø" : "½«²¥·Å½Ì³Ì¹Ø");
-    }
-
-    ///// <summary>
-    ///// ¸üĞÂ¹Ø¿¨ÏÔÊ¾ÎÄ±¾
-    ///// </summary>
-    //private void UpdateLevelDisplay()
-    //{
-    //    if (levelDisplayText != null && currentLevelData != null)
-    //    {
-    //        levelDisplayText.text = $"µ±Ç°¹Ø¿¨: {currentLevelData.levelName}\nÄÑ¶È: {currentLevelData.difficulty}\nÒì³£: {discoveredExceptions}/{currentLevelData.totalExceptions}";
-    //    }
-    //}
-
-    /// <summary>
-    /// ¸üĞÂ¹Ø¿¨ÏÔÊ¾ÎÄ±¾
-    /// </summary>
-    private void UpdateLevelDisplay()
-    {
-        if (levelDisplayText != null)
-        {
             if (currentLevelData != null)
             {
-                levelDisplayText.text = $"µ±Ç°¹Ø¿¨: {currentLevelData.levelName}\nÄÑ¶È: {currentLevelData.difficulty}\nÒì³£: {discoveredExceptions}/{currentLevelData.totalExceptions}";
-            }
-            else
-            {
-                levelDisplayText.text = "µ±Ç°ÎŞ¼¤»î¹Ø¿¨";
+                sceneToLoad = currentLevelData.sceneName;
             }
         }
-    }
 
-    /// <summary>
-    /// ÁĞ±íÂÒĞòÅÅĞò
-    /// </summary>
-    private void ShuffleList<T>(List<T> list)
-    {
-        for (int i = 0; i < list.Count; i++)
+        if (!string.IsNullOrEmpty(sceneToLoad))
         {
-            T temp = list[i];
-            int randomIndex = Random.Range(i, list.Count);
-            list[i] = list[randomIndex];
-            list[randomIndex] = temp;
+            Debug.Log($"æ­£åœ¨åŠ è½½åœºæ™¯: {sceneToLoad} (Floor {currentFloor})");
+            SceneManager.LoadScene(sceneToLoad);
+        }
+        else
+        {
+            Debug.LogError("æ— æ³•åŠ è½½å…³å¡ï¼šåœºæ™¯åä¸ºç©ºï¼Œå¯èƒ½æ˜¯æ± å­ç©ºäº†æˆ–é…ç½®é”™è¯¯ã€‚");
         }
     }
 
-    /// <summary>
-    /// »ñÈ¡µ±Ç°¹Ø¿¨ĞÅÏ¢£¨¹©ÆäËû½Å±¾Ê¹ÓÃ£©
-    /// </summary>
-    public LevelData GetCurrentLevelData()
+    // --- ä¾› UI ä½¿ç”¨çš„ Getter ---
+
+    public string GetCurrentFloorText()
     {
-        return currentLevelData;
+        if (currentFloor == 1) return "Tutorial";
+        if (currentFloor >= endingFloorIndex) return "Exit";
+        return $"Floor {currentFloor}";
     }
 
-    /// <summary>
-    /// »ñÈ¡µ±Ç°·¢ÏÖµÄÒì³£Êı
-    /// </summary>
-    public int GetDiscoveredExceptions()
-    {
-        return discoveredExceptions;
-    }
-}
-
-/// <summary>
-/// ¹Ø¿¨ÄÑ¶ÈÃ¶¾Ù
-/// </summary>
-public enum LevelDifficulty
-{
-    Easy,
-    Medium,
-    Hard
-}
-
-/// <summary>
-/// ¹Ø¿¨Êı¾İÀà
-/// </summary>
-[System.Serializable]
-public class LevelData
-{
-    public string levelName;
-    public string sceneName;
-    public LevelDifficulty difficulty;
-    public int totalExceptions;
+    public int GetCurrentAnomaliesFound() => foundAnomalies;
 }

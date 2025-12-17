@@ -9,6 +9,8 @@ TagManager:
   - Exception_See3s
   - Exception_Listen3s
   - Clone
+  - E
+  - NextLevel
   layers:
   - Default
   - TransparentFX

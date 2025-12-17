@@ -3,64 +3,71 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    public float speed = 5f;
+    [Header("Âü∫Á°ÄËÆæÁΩÆ")]
+    public float baseSpeed = 5f;
     public float mouseSensitivity = 2f;
     public Transform cameraTransform;
-    public GameObject playerClonePrefab; // ‘⁄Inspector÷–÷∏∂®‘§÷∆ÃÂ
 
+    private float currentSpeedMultiplier = 1f;
+    private bool controlsInverted = false; // ÊéßÂà∂ÂèçËΩ¨
     private CharacterController characterController;
     private float verticalRotation = 0f;
 
-    // “Ï≥£œ‡πÿ
-    private GameObject currentException = null;
-    private List<GameObject> recordedExceptions = new List<GameObject>();
-    private GameObject currentlySeenException = null;
-    private float seeTimer = 0f;
-    private float seeDuration = 3f;
-    private List<GameObject> seenExceptions = new List<GameObject>();
-    private GameObject listeningException = null;
-    private float listenTimer = 0f;
-    private float listenDuration = 3f;
-    private List<GameObject> listenedExceptions = new List<GameObject>();
-
-    // øÀ¬°œ‡πÿ
-    private float cloneSpawnInterval = 10f;
-    private float cloneSpawnTimer = 0f;
-
-    // Œª÷√¿˙ ∑º«¬º
-    private Queue<Vector3> positionHistory = new Queue<Vector3>();
-    private float positionRecordInterval = 0.1f;
-    private float recordTimer = 0f;
-    private const int historySeconds = 3;
-    private int maxHistorySize;
+    // --- Êó∂Èó¥ÂõûÊªöÁ≥ªÁªü ---
+    private struct PlayerState
+    {
+        public Vector3 position;
+        public Quaternion rotation;
+        public Quaternion camRotation;
+    }
+    private List<PlayerState> historyRecords = new List<PlayerState>();
+    private bool isRewinding = false;
+    private int maxHistoryFrames = 600; // Á∫¶10Áßí (60fps)
 
     void Start()
     {
         characterController = GetComponent<CharacterController>();
-        maxHistorySize = Mathf.CeilToInt(historySeconds / positionRecordInterval);
-
-        // --- –ﬁ∏ƒµ„: “∆∂ØµΩGameManagerµƒResumeGame÷– ---
-        // Cursor.lockState = CursorLockMode.Locked; 
+        // ÂèØ‰ª•Âú®ËøôÈáåÊü•Êâæ TimeAnomalyManager Âπ∂Ê≥®ÂÜåËá™Â∑±ÔºåÊàñËÄÖËÆ© Manager Êù•ÊâæÂÆÉ
     }
 
     void Update()
     {
-        // --- –ﬁ∏ƒµ„: “—”–¬ﬂº≠£¨±£≥÷≤ª±‰ ---
-        // Õ®π˝æ≤Ã¨±‰¡øºÏ≤È”Œœ∑ «∑Ò‘›Õ££¨’‚ «∫‹∫√µƒ◊ˆ∑®
         if (GameManager.IsGamePaused) return;
 
+        // Â¶ÇÊûúÊ≠£Âú®ÂõûÊªöÔºå‰∏çÊé•ÂèóÁé©ÂÆ∂ËæìÂÖ•ÔºåÂè™Êí≠ÊîæÂéÜÂè≤
+        if (isRewinding)
+        {
+            ExecuteRewind();
+            return;
+        }
+
+        // Ê≠£Â∏∏Ê∏∏ÊàèÈÄªËæë
         HandleMouseLook();
         HandleMovement();
         HandleGravity();
-        HandleExceptionInteraction();
-        RecordPosition();
-        HandleCloneSpawning();
     }
+
+    void FixedUpdate()
+    {
+        if (!isRewinding && !GameManager.IsGamePaused)
+        {
+            RecordState();
+        }
+    }
+
+    // --- Ê†∏ÂøÉÁßªÂä®ÈÄªËæë ---
 
     private void HandleMouseLook()
     {
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+
+        // ÊéßÂà∂ÂèçËΩ¨ÈÄªËæë (Êó∂Èó¥ÂÄíÊµÅ/Ê∑∑‰π±Êó∂ÂèØËÉΩÁî®Âà∞)
+        if (controlsInverted)
+        {
+            mouseX = -mouseX;
+            mouseY = -mouseY;
+        }
 
         transform.Rotate(0, mouseX, 0);
         verticalRotation -= mouseY;
@@ -72,8 +79,16 @@ public class PlayerController : MonoBehaviour
     {
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
+
+        if (controlsInverted)
+        {
+            moveX = -moveX;
+            moveZ = -moveZ;
+        }
+
         Vector3 move = transform.right * moveX + transform.forward * moveZ;
-        characterController.Move(move * speed * Time.deltaTime);
+        // Â∫îÁî®ÈÄüÂ∫¶ÂÄçÁéá
+        characterController.Move(move * (baseSpeed * currentSpeedMultiplier) * Time.deltaTime);
     }
 
     private void HandleGravity()
@@ -84,190 +99,90 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Ω´À˘”–“Ï≥£¥¶¿Ì¬ﬂº≠’˚∫œµΩ“ª∏ˆ∑Ω∑®÷–
-    private void HandleExceptionInteraction()
+    // --- ÂºÇÂ∏∏ÊïàÊûúÊé•Âè£ ---
+
+    public void SetSpeedMultiplier(float multiplier)
     {
-        //// Eº¸Ωªª•
-        //if (currentException != null && Input.GetKeyDown(KeyCode.E) && !recordedExceptions.Contains(currentException))
-        //{
-        //    recordedExceptions.Add(currentException);
-        //    Debug.Log("“—º«¬º“Ï≥£: " + currentException.name);
-        //}
-
-        // Eº¸Ωªª• - ∏ƒŒ™πÿø®Ωªª•
-        if (Input.GetKeyDown(KeyCode.E))
-        {
-            if (LevelManager.Instance != null)
-            {
-                LevelManager.Instance.OnInteractKeyPressed();
-            }
-        }
-
-        //// Eº¸Ωªª•
-        //if (currentException != null && Input.GetKeyDown(KeyCode.E) && !recordedExceptions.Contains(currentException))
-        //{
-        //    recordedExceptions.Add(currentException);
-        //    Debug.Log("“—º«¬º“Ï≥£: " + currentException.name);
-
-        //    // ÃÌº”∞≤»´ºÏ≤È
-        //    if (LevelManager.Instance != null)
-        //    {
-        //        LevelManager.Instance.RecordExceptionDiscovered();
-        //    }
-        //    else
-        //    {
-        //        Debug.LogWarning("LevelManager  µ¿˝Œ¥’“µΩ£¨Œﬁ∑®º«¬º“Ï≥£°£");
-        //    }
-        //}
-
-        //  ”æıºÏ≤‚
-        Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
-        if (Physics.Raycast(ray, out RaycastHit hit, 10f) && hit.collider.CompareTag("Exception_See3s"))
-        {
-            if (currentlySeenException != hit.collider.gameObject)
-            {
-                currentlySeenException = hit.collider.gameObject;
-                seeTimer = 0f;
-                Debug.Log("ø™ ºπ€≤Ï“Ï≥£: " + currentlySeenException.name);
-            }
-            seeTimer += Time.deltaTime;
-            if (seeTimer >= seeDuration && !seenExceptions.Contains(currentlySeenException))
-            {
-                seenExceptions.Add(currentlySeenException);
-                LevelManager.Instance.RecordExceptionDiscovered();
-                Debug.Log("º«¬º ”æı“Ï≥£: " + currentlySeenException.name);
-            }
-        }
-        else if (currentlySeenException != null)
-        {
-            currentlySeenException = null;
-            seeTimer = 0f;
-        }
-
-        // Ã˝æıºÏ≤‚
-        bool foundListener = false;
-        foreach (var obj in GameObject.FindGameObjectsWithTag("Exception_Listen3s"))
-        {
-            if (Vector3.Distance(transform.position, obj.transform.position) <= 3f)
-            {
-                foundListener = true;
-                if (listeningException != obj)
-                {
-                    listeningException = obj;
-                    listenTimer = 0f;
-                    Debug.Log("ø™ ºÒˆÃ˝“Ï≥£: " + listeningException.name);
-                }
-                listenTimer += Time.deltaTime;
-                if (listenTimer >= listenDuration && !listenedExceptions.Contains(listeningException))
-                {
-                    listenedExceptions.Add(listeningException);
-                    LevelManager.Instance.RecordExceptionDiscovered();
-                    Debug.Log("º«¬ºÃ˝æı“Ï≥£: " + listeningException.name);
-                }
-                break;
-            }
-        }
-        if (!foundListener && listeningException != null)
-        {
-            listeningException = null;
-            listenTimer = 0f;
-        }
+        currentSpeedMultiplier = multiplier;
     }
 
-    void RecordPosition()
+    public void SetControlsInverted(bool inverted)
     {
-        recordTimer += Time.deltaTime;
-        if (recordTimer >= positionRecordInterval)
-        {
-            positionHistory.Enqueue(transform.position);
-            recordTimer = 0f;
-            if (positionHistory.Count > maxHistorySize)
-            {
-                positionHistory.Dequeue();
-            }
-        }
+        controlsInverted = inverted;
     }
 
-    void HandleCloneSpawning()
+    // --- ÂõûÊªöÁ≥ªÁªüÂÆûÁé∞ ---
+
+    void RecordState()
     {
-        // --- –ﬁ∏ƒµ„: Õ®π˝µ•¿˝∑√Œ  GameTimer ---
-        if (GameTimer.Instance == null || GameTimer.Instance.currentException != GameTimer.TimeExceptionType.SpawnClone)
+        if (historyRecords.Count >= maxHistoryFrames)
         {
-            return;
+            historyRecords.RemoveAt(0);
         }
-
-        cloneSpawnTimer += Time.deltaTime;
-        if (cloneSpawnTimer >= cloneSpawnInterval)
+        historyRecords.Add(new PlayerState
         {
-            cloneSpawnTimer = 0;
-            if (playerClonePrefab == null)
-            {
-                Debug.LogError("PlayerClone PrefabŒ¥‘⁄Inspector÷–÷∏∂®£°");
-                return;
-            }
-
-            // œ˙ªŸ“—¥Ê‘⁄µƒøÀ¬°ÃÂ
-            GameObject existingClone = GameObject.FindWithTag("Clone");
-            if (existingClone != null)
-            {
-                Destroy(existingClone);
-            }
-
-            if (positionHistory.Count > 0)
-            {
-                Vector3 spawnPosition = positionHistory.Peek();
-                if (Vector3.Distance(spawnPosition, transform.position) < 0.5f)
-                {
-                    spawnPosition = transform.position - transform.forward * 2.0f; // ‘ˆº”æ‡¿Î±‹√‚¡¢º¥÷ÿµ˛
-                }
-                GameObject newClone = Instantiate(playerClonePrefab, spawnPosition, transform.rotation);
-                newClone.tag = "Clone"; // »∑±£–¬øÀ¬°ÃÂ”–’˝»∑µƒTag
-                Debug.Log($"‘⁄ {spawnPosition} Œª÷√…˙≥…¡À“ª∏ˆ–¬µƒøÀ¬°ÃÂ°£");
-            }
-        }
+            position = transform.position,
+            rotation = transform.rotation,
+            camRotation = cameraTransform.localRotation
+        });
     }
 
-    void OnTriggerEnter(Collider other)
+    public void StartRewind()
     {
-        if (other.CompareTag("TeleportWall"))
-        {
-            TeleportThroughWall();
-        }
-        else if (other.CompareTag("Exception_E"))
-        {
-            currentException = other.gameObject;
-            Debug.Log("Ω¯»Î“Ï≥£Ωªª•«¯: " + currentException.name);
-        }
+        isRewinding = true;
+        characterController.enabled = false; // Á¶ÅÁî®Á¢∞ÊíûÂô®‰ª•ÂÖçÂõûÊªöÊó∂Âç°‰Ωè
     }
 
-    void OnTriggerExit(Collider other)
+    public void StopRewind()
     {
-        if (other.CompareTag("Exception_E") && other.gameObject == currentException)
-        {
-            currentException = null;
-            Debug.Log("¿Îø™“Ï≥£Ωªª•«¯°£");
-        }
-    }
-
-    // --- –ﬁ∏ƒµ„: ª÷∏¥ƒ„‘≠¿¥µƒ¥´ÀÕ¬ﬂº≠ ---
-    public void TeleportThroughWall()
-    {
-        Vector3 oldPos = transform.position;
-        Debug.Log("¥´ÀÕ«∞Œª÷√£∫" + oldPos);
-
-        Vector3 newPos = oldPos;
-        newPos.x = -oldPos.x;
-        newPos.z = oldPos.z - 0.5f;
-
-        characterController.enabled = false;
-        transform.position = newPos;
+        isRewinding = false;
         characterController.enabled = true;
+        historyRecords.Clear(); // ÂõûÊªöÁªìÊùüÊ∏ÖÁ©∫ÂéÜÂè≤ÔºåÈò≤Ê≠¢ÈáçÂ§ç
+    }
 
-        Debug.Log("¥´ÀÕ∫ÛŒª÷√£∫" + transform.position);
+    void ExecuteRewind()
+    {
+        if (historyRecords.Count > 0)
+        {
+            // ÂèñÂá∫ÊúÄÂêé‰∏ÄÂ∏ß
+            int index = historyRecords.Count - 1;
+            PlayerState state = historyRecords[index];
 
-        // –˝◊™180∂»
-        Vector3 playerEuler = transform.eulerAngles;
-        playerEuler.y += 180f;
-        transform.rotation = Quaternion.Euler(playerEuler);
+            transform.position = state.position;
+            transform.rotation = state.rotation;
+            cameraTransform.localRotation = state.camRotation;
+
+            historyRecords.RemoveAt(index);
+        }
+        else
+        {
+            // ÂéÜÂè≤ËÆ∞ÂΩïÊí≠ÊîæÂÆåÊØïÔºåÂÅúÊ≠¢ÂõûÊªöÊàñ‰øùÊåÅ‰∏çÂä®
+            // ËøôÈáåÂèØ‰ª•ÈÄâÊã©Ëá™Âä®ÂÅúÊ≠¢Ôºå‰πüÂèØ‰ª•Á≠âÂºÇÂ∏∏Ëß£ÂÜ≥
+        }
+    }
+
+    // --- ÂÆâÂÖ®‰º†ÈÄÅ (Áî®‰∫éÊó∂Èó¥Ë∑≥Ë∑É) ---
+    public void SafeTeleportForward(float distance)
+    {
+        Vector3 forward = transform.forward;
+        Vector3 origin = transform.position + Vector3.up; // Á®çÂæÆÊä¨È´ò‰∏ÄÁÇπÊ£ÄÊµã
+
+        RaycastHit hit;
+        float targetDist = distance;
+
+        // Â∞ÑÁ∫øÊ£ÄÊµãÂâçÊñπÊòØÂê¶ÊúâÂ¢ô
+        if (Physics.Raycast(origin, forward, out hit, distance))
+        {
+            // Â¶ÇÊûúÊúâÂ¢ôÔºå‰º†ÈÄÅÂà∞Â¢ôÂâç 0.5 Á±≥Â§Ñ
+            targetDist = hit.distance - 0.5f;
+        }
+
+        if (targetDist > 0.5f)
+        {
+            characterController.enabled = false;
+            transform.position += forward * targetDist;
+            characterController.enabled = true;
+            Debug.Log($"Êó∂Èó¥Ë∑≥Ë∑É: ÂâçËøõ‰∫Ü {targetDist} Á±≥");
+        }
     }
 }

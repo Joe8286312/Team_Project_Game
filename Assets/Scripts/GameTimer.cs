@@ -1,114 +1,192 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameTimer : MonoBehaviour
 {
-    // --- ĞŞ¸Äµã 1: Ìí¼Óµ¥ÀıÊµÀı ---
     public static GameTimer Instance { get; private set; }
 
-    private float elapsedTime = 0f;
-    private bool isRunning = false;
+    [Header("æ¸¸æˆè§„åˆ™")]
+    [Tooltip("æ¸¸æˆæœ€å¤§é™æ—¶ï¼ˆç§’ï¼‰ï¼Œè¶…è¿‡æ­¤æ—¶é—´åˆ¤å®šå¤±è´¥")]
+    public float maxGameTime = 600f;
 
-    // Ê±¼äÒì³£ÀàĞÍ¶¨Òå
+    // --- çœŸå®æ—¶é—´ç³»ç»Ÿ (ç´¯åŠ æ¨¡å¼ï¼Œç”¨äºåˆ¤å®šæ¸¸æˆç»“æŸ) ---
+    private float realTimeElapsed = 0f;
+    private bool isRealTimeRunning = false;
+
+    // --- è™šå‡æ—¶é—´ç³»ç»Ÿ (UIæ˜¾ç¤ºç”¨) ---
+    private float displayElapsedTime = 0f;
+
+    // --- å¼‚å¸¸å®šä¹‰ ---
     public enum TimeExceptionType
     {
         None, Stop, Reverse, Jump, Loop, DoubleSpeed, SpawnClone
     }
+
+    [Header("å½“å‰å¼‚å¸¸çŠ¶æ€")]
     public TimeExceptionType currentException = TimeExceptionType.None;
+    public bool hasActiveAnomaly { get; private set; } = false;
 
-    // Òì³£Ğ§¹û²ÎÊı
+    // å¼‚å¸¸å‚æ•°
     private float jumpInterval = 5f;
-    private float jumpAmount = 3f;
     private float lastJumpTime = 0f;
-    private float loopStart = 0f;
-    private float loopTime = 5f;
 
-    private TimeExceptionType lastLoggedException = TimeExceptionType.None;
+    // --- æ‰¾å›ï¼šLoop å¼‚å¸¸å‚æ•° ---
+    private float loopStartVal = 0f; // è®°å½•è¿›å…¥å¾ªç¯æ—¶çš„æ—¶é—´ç‚¹
+    private float loopDuration = 5f; // UI è§†è§‰ä¸Šçš„å¾ªç¯å‘¨æœŸ
 
-    // --- ĞŞ¸Äµã 2: ÊµÏÖµ¥ÀıÄ£Ê½µÄ Awake ·½·¨ ---
     private void Awake()
     {
-        if (Instance == null)
+        if (Instance == null) { Instance = this; DontDestroyOnLoad(gameObject); }
+        else { Destroy(gameObject); }
+    }
+
+    // --- æ ¸å¿ƒï¼šåˆå§‹åŒ– ---
+    public void FullReset()
+    {
+        realTimeElapsed = 0f;
+        isRealTimeRunning = true;
+        displayElapsedTime = 0f;
+        currentException = TimeExceptionType.None;
+        hasActiveAnomaly = false;
+        Debug.Log($"GameTimer: æ¸¸æˆé‡ç½®ï¼Œé™æ—¶ {maxGameTime} ç§’");
+    }
+
+    // --- æ³¨å…¥å¼‚å¸¸ ---
+    public void InjectLevelException(TimeExceptionType type)
+    {
+        currentException = type;
+
+        if (type != TimeExceptionType.None)
         {
-            Instance = this;
-            DontDestroyOnLoad(gameObject); // ÉèÖÃ´Ë¶ÔÏóÔÚ³¡¾°ÇĞ»»Ê±²»±»Ïú»Ù
+            hasActiveAnomaly = true;
+
+            // --- æ‰¾å›ï¼šåˆå§‹åŒ– Loop å‚æ•° ---
+            if (type == TimeExceptionType.Loop)
+            {
+                loopStartVal = displayElapsedTime; // é”æ­»å½“å‰æ—¶é—´ç‚¹ä½œä¸ºå¾ªç¯èµ·ç‚¹
+                Debug.Log($"GameTimer: æ—¶é—´å¾ªç¯èµ·ç‚¹è®¾ä¸º {loopStartVal}");
+            }
         }
         else
         {
-            Destroy(gameObject); // Èç¹ûÒÑÓĞÊµÀı£¬ÔòÏú»Ù´ËÖØ¸´¶ÔÏó
+            hasActiveAnomaly = false;
+            SyncDisplayToReal(); // æ¢å¤æ­£å¸¸æ—¶åŒæ­¥æ—¶é—´
         }
+    }
+
+    // --- è§£å†³å¼‚å¸¸ ---
+    public void ResolveAnomaly()
+    {
+        if (currentException != TimeExceptionType.None)
+        {
+            // 1. çŠ¶æ€å¤åŸ
+            currentException = TimeExceptionType.None;
+
+            // 2. é€šçŸ¥ Manager åœæ­¢ç‰¹æ•ˆ
+            if (TimeAnomalyManager.Instance != null)
+                TimeAnomalyManager.Instance.ResolveEffect();
+
+            // 3. è®¡åˆ†
+            if (hasActiveAnomaly)
+            {
+                hasActiveAnomaly = false;
+                if (LevelManager.Instance != null)
+                    LevelManager.Instance.ReportAnomalyFound();
+            }
+
+            // 4. å¼ºåˆ¶åŒæ­¥æ—¶é—´ (é˜²æ­¢æ¼‚ç§»)
+            SyncDisplayToReal();
+        }
+    }
+
+    private void SyncDisplayToReal()
+    {
+        displayElapsedTime = realTimeElapsed;
     }
 
     void Update()
     {
-        if (!isRunning) return;
+        // æš‚åœæ—¶å…¨åœ
+        if (GameManager.IsGamePaused) return;
+        if (!isRealTimeRunning) return;
 
-        // ½öÔÚÒì³£ÀàĞÍ±ä»¯Ê±¼ÇÂ¼ÈÕÖ¾£¬±ÜÃâË¢ÆÁ
-        if (currentException != lastLoggedException)
+        // 1. çœŸå®æ—¶é—´ç´¯åŠ 
+        realTimeElapsed += Time.unscaledDeltaTime;
+
+        // æ£€æŸ¥è¶…æ—¶
+        if (realTimeElapsed >= maxGameTime)
         {
-            Debug.Log($"´¥·¢Ê±¼äÒì³£: {currentException}");
-            lastLoggedException = currentException;
+            HandleTimeOut();
+            return;
         }
 
-        // ¸ù¾İµ±Ç°Òì³£ÀàĞÍ¸üĞÂÊ±¼ä
+        // 2. UI æ—¶é—´æ›´æ–° (è¡¨æ¼”å±‚)
+        UpdateDisplayTime();
+    }
+
+    private void UpdateDisplayTime()
+    {
         switch (currentException)
         {
             case TimeExceptionType.None:
-                elapsedTime += Time.deltaTime;
+                // é”æ­»çœŸå®æ—¶é—´ï¼Œé˜²æ­¢æµ®ç‚¹æ¼‚ç§»
+                displayElapsedTime = realTimeElapsed;
                 break;
+
             case TimeExceptionType.Stop:
-                // Ê±¼äÍ£Ö¹£¬²»Ö´ĞĞÈÎºÎ²Ù×÷
+                // åœæ­¢ï¼šUI ä¸åŠ¨
                 break;
+
             case TimeExceptionType.Reverse:
-                elapsedTime -= Time.deltaTime;
-                if (elapsedTime < 0) elapsedTime = 0;
+                // å€’æµ
+                displayElapsedTime -= Time.deltaTime * 1.0f;
+                if (displayElapsedTime < 0) displayElapsedTime = 0;
                 break;
+
             case TimeExceptionType.Jump:
-                elapsedTime += Time.deltaTime;
-                if (Time.time - lastJumpTime >= jumpInterval) // Ê¹ÓÃTime.timeÀ´ÅĞ¶ÏÕæÊµÊ±¼ä¼ä¸ô
+                displayElapsedTime += Time.deltaTime;
+                if (Time.time - lastJumpTime >= jumpInterval)
                 {
-                    elapsedTime += jumpAmount;
+                    displayElapsedTime += Random.Range(10f, 60f);
                     lastJumpTime = Time.time;
                 }
                 break;
+
+            // --- æ‰¾å›ï¼šLoop UI é€»è¾‘ ---
             case TimeExceptionType.Loop:
-                if (loopStart == 0f) loopStart = elapsedTime;
-                elapsedTime += Time.deltaTime;
-                if (elapsedTime > loopStart + loopTime) elapsedTime = loopStart;
+                displayElapsedTime += Time.deltaTime;
+                // å¦‚æœ UI æ—¶é—´è¶…è¿‡äº† (èµ·ç‚¹ + 5ç§’)ï¼Œå¼ºè¡Œè·³å›èµ·ç‚¹
+                // è¿™ä¼šè®©ç©å®¶çœ‹åˆ°æ—¶é—´ä¸€ç›´åœ¨ 00:10 -> 00:15 ä¹‹é—´é¬¼ç•œ
+                if (displayElapsedTime > loopStartVal + loopDuration)
+                {
+                    displayElapsedTime = loopStartVal;
+                }
                 break;
+
             case TimeExceptionType.DoubleSpeed:
-                elapsedTime += Time.deltaTime * 2;
+                displayElapsedTime += Time.deltaTime * 5f; // UI è·‘å¾—é£å¿«
                 break;
+
+            // --- æ‰¾å›ï¼šSpawnClone é€»è¾‘ ---
             case TimeExceptionType.SpawnClone:
-                elapsedTime += Time.deltaTime;
+                // åœ¨ UI ä¸Šï¼Œæ—¶é—´æ˜¯æ­£å¸¸æµé€çš„ï¼Œå¼‚å¸¸ä½“ç°åœ¨åœºæ™¯é‡Œå‡ºç°äº†å…‹éš†ä½“
+                displayElapsedTime += Time.deltaTime;
+                break;
+
+            default:
+                displayElapsedTime = realTimeElapsed;
                 break;
         }
     }
 
-    // --- ĞŞ¸Äµã 3: ²»ĞèÒª StartTimer ·½·¨£¬ÓÉ ResetAndStart ¿ØÖÆ ---
-    // public void StartTimer() { isRunning = true; }
-
-    public void StopTimer()
+    private void HandleTimeOut()
     {
-        isRunning = false;
+        isRealTimeRunning = false;
+        SceneManager.LoadScene("Demo_Death");
     }
 
-    public void ResetAndStart()
-    {
-        elapsedTime = 0f;
-        isRunning = true;
-        currentException = TimeExceptionType.None; // ÖØÖÃÊ±Çå³ıÒì³£×´Ì¬
-        Debug.Log("¼ÆÊ±Æ÷ÒÑÖØÖÃ²¢Æô¶¯¡£");
-    }
-
-    public float GetElapsedTime()
-    {
-        return elapsedTime;
-    }
-
-    public bool IsRunning()
-    {
-        return isRunning;
-    }
+    public float GetDisplayTime() => displayElapsedTime;
+    public float GetRealTimeElapsed() => realTimeElapsed;
 
     public static string FormatTime(float time)
     {

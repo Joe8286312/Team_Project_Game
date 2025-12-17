@@ -8,23 +8,23 @@ public class TeleportWall : MonoBehaviour
     {
         //if (other.CompareTag("Player"))
         //{
-        //    Debug.Log("´¥·¢Æ÷ÒÑ´¥·¢£¬³¢ÊÔ´«ËÍ£¡");
+        //    Debug.Log("è§¦å‘å™¨å·²è§¦å‘ï¼Œå°è¯•ä¼ é€ï¼");
         //    Transform player = other.transform;
-        //    Debug.Log("Íæ¼ÒÎ»ÖÃ£º" + player.position);
+        //    Debug.Log("ç©å®¶ä½ç½®ï¼š" + player.position);
 
-        //    // È¡·´xÖá£¬½«Íæ¼Ò´«ËÍµ½Ç½ÁíÒ»²à
+        //    // å–åxè½´ï¼Œå°†ç©å®¶ä¼ é€åˆ°å¢™å¦ä¸€ä¾§
         //    Vector3 newPos = player.position;
-        //    newPos.x = -newPos.x; // xÖáÈ¡·´
+        //    newPos.x = -newPos.x; // xè½´å–å
 
         //    player.position = newPos;
-        //    Debug.Log("ĞÂµÄÍæ¼ÒÎ»ÖÃ£º" + newPos);
+        //    Debug.Log("æ–°çš„ç©å®¶ä½ç½®ï¼š" + newPos);
 
-        //    // Íæ¼Ò³¯ÏòĞı×ª180¶È
+        //    // ç©å®¶æœå‘æ—‹è½¬180åº¦
         //    Vector3 playerEuler = player.eulerAngles;
         //    playerEuler.y += 180f;
         //    player.rotation = Quaternion.Euler(playerEuler);
 
-        //    // Èç¹ûÄãµÄÏà»úÊÇÍæ¼ÒµÄ×ÓÎïÌå£¬Ëü»á¸ú×ÅÒ»Í¬Ğı×ª£¬²»Ğè¶îÍâ´¦Àí
+        //    // å¦‚æœä½ çš„ç›¸æœºæ˜¯ç©å®¶çš„å­ç‰©ä½“ï¼Œå®ƒä¼šè·Ÿç€ä¸€åŒæ—‹è½¬ï¼Œä¸éœ€é¢å¤–å¤„ç†
         //}
     }
 }

@@ -7,54 +7,51 @@ public class PauseMenuController : MonoBehaviour
     public TextMeshProUGUI textTimeButton;
     public GameObject pauseMenu;
 
-    // --- ĞŞ¸Äµã 1: ÒÆ³ı¶ÔGameManagerºÍGameTimerµÄÖ±½Ó¹«¹²ÒıÓÃ ---
-    // public GameManager gameManager;
-    // public GameTimer gameTimer;
-
     private void Awake()
     {
-        // ÓÎÏ·¿ªÊ¼Ê±£¬ÔİÍ£²Ëµ¥Ä¬ÈÏÊÇ¹Ø±ÕµÄ
         if (pauseMenu != null)
             pauseMenu.SetActive(false);
     }
 
-    /// <summary>
-    /// ¸üĞÂÔİÍ£²Ëµ¥ÖĞµÄÊ±¼äÏÔÊ¾
-    /// </summary>
     public void UpdateTime(string time)
     {
         if (textTimeButton != null)
             textTimeButton.text = time;
     }
 
-    // "¼ÌĞøÓÎÏ·"°´Å¥µÄÏìÓ¦·½·¨
     public void OnContinueButtonClicked()
     {
-        // --- ĞŞ¸Äµã 2: Í¨¹ıGameManagerµ¥ÀıÀ´¿ØÖÆÔİÍ£ ---
         if (GameManager.Instance != null)
         {
             GameManager.Instance.TogglePause();
         }
     }
 
-    // "·µ»Ø²Ëµ¥"°´Å¥µÄÏìÓ¦·½·¨
     public void OnMenuButtonClicked()
     {
-        // --- ĞŞ¸Äµã 3: ÔÚ·µ»Ø²Ëµ¥Ç°£¬È·±£Ê±¼ä»Ö¸´Õı³£ ---
-        // GameManagerµÄOnSceneLoaded»á´¦Àí²Ëµ¥³¡¾°µÄ¹â±êºÍÊ±¼äÔİÍ£
+        Time.timeScale = 1f; // ç¡®ä¿å›ä¸»èœå•æ—¶æ—¶é—´æ¢å¤
         SceneManager.LoadScene("DemoMenu");
     }
 
-    // "Ïû³ıÒì³£"°´Å¥µÄÏìÓ¦·½·¨
+    // "å‘ç°å¼‚å¸¸/ä¿®å¤" æŒ‰é’®ç‚¹å‡»å“åº”
     public void OnTimeButtonClicked()
     {
-        // --- ĞŞ¸Äµã 4: Í¨¹ıGameTimerµ¥ÀıÀ´ÖØÖÃÒì³£×´Ì¬ ---
-        if (GameTimer.Instance != null && GameTimer.Instance.currentException != GameTimer.TimeExceptionType.None)
+        if (GameTimer.Instance != null)
         {
-            GameTimer.TimeExceptionType previousException = GameTimer.Instance.currentException;
-            GameTimer.Instance.currentException = GameTimer.TimeExceptionType.None;
-            LevelManager.Instance.RecordExceptionDiscovered();
-            Debug.Log($"Òì³£ÒÑÊÖ¶¯Çå³ı¡£Ô­Òì³£: {previousException}");
+            // 1. æ‰§è¡Œé€»è¾‘ä¿®å¤ (æ•°æ®å±‚é¢çš„åŒæ­¥)
+            GameTimer.Instance.ResolveAnomaly();
+
+            // 2. --- æ ¸å¿ƒä¿®æ­£ç‚¹ï¼šç«‹å³å¼ºåˆ¶åˆ·æ–° UI æ˜¾ç¤º ---
+            // ç”±äºæ¸¸æˆæ­¤æ—¶å¤„äºæš‚åœçŠ¶æ€ (IsGamePaused=true)ï¼ŒGameManager çš„ Update å¾ªç¯ä¸ä¼šè¿è¡Œï¼Œ
+            // UI ä¸ä¼šè‡ªåŠ¨åˆ·æ–°ã€‚å¿…é¡»æ‰‹åŠ¨ä»è¿™é‡Œæ‹‰å–æœ€æ–°æ—¶é—´å¹¶èµ‹å€¼ç»™æ–‡æœ¬ï¼Œ
+            // å¦åˆ™ç©å®¶ä¼šè§‰å¾—ç‚¹å‡»äº†æ²¡æœ‰ååº”ã€‚
+            float correctTime = GameTimer.Instance.GetDisplayTime();
+            if (textTimeButton != null)
+            {
+                textTimeButton.text = GameTimer.FormatTime(correctTime);
+            }
+
+            // Debug.Log($"UIå·²å¼ºåˆ¶åˆ·æ–°ä¸º: {GameTimer.FormatTime(correctTime)}");
         }
     }
 }

@@ -7,9 +7,6 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI textTime;
     public TextMeshProUGUI textFPS;
 
-    // --- 修改点: GameTimer引用不再需要公开 ---
-    // public GameTimer gameTimer;
-
     private void Awake()
     {
         if (textInfo != null)
@@ -18,14 +15,13 @@ public class UIManager : MonoBehaviour
             textTime.text = "00:00";
     }
 
-    // --- 修改点: 此方法由GameManager在Update中调用 ---
+    // --- 杩欎釜鏂规硶鐜板湪搴旇涓嶅啀鎶ラ敊浜嗭紝鍥犱负 GameTimer.FormatTime 宸茬粡瀛樺湪 ---
     public void UpdateTime(float time)
     {
         if (textTime != null)
             textTime.text = GameTimer.FormatTime(time);
     }
 
-    // --- 修改点: 此方法由GameManager在Update中调用 ---
     public void UpdateFPS(int fps)
     {
         if (textFPS != null)
