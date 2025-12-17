@@ -13,21 +13,24 @@ public class PlayerController : MonoBehaviour
     private CharacterController characterController;
     private float verticalRotation = 0f;
 
-    // --- 时间回滚系统 ---
+    // --- 优化后的时间循环系统 (仅用于 Loop 异常) ---
     private struct PlayerState
     {
         public Vector3 position;
         public Quaternion rotation;
         public Quaternion camRotation;
     }
-    private List<PlayerState> historyRecords = new List<PlayerState>();
-    private bool isRewinding = false;
-    private int maxHistoryFrames = 600; // 约10秒 (60fps)
+    
+    private List<PlayerState> loopRecords = new List<PlayerState>(); // 改名更明确
+    private bool isLoopActive = false; // 是否处于循环异常
+    private bool isRewinding = false;  // 是否正在回滚
+    private int maxLoopFrames = 300;   // Loop 专用，约5秒 (60fps)
+    private float loopDuration = 5f;   // 循环周期（秒）
+    private float loopTimer = 0f;      // 循环计时器
 
     void Start()
     {
         characterController = GetComponent<CharacterController>();
-        // 可以在这里查找 TimeAnomalyManager 并注册自己，或者让 Manager 来找它
     }
 
     void Update()
@@ -45,13 +48,25 @@ public class PlayerController : MonoBehaviour
         HandleMouseLook();
         HandleMovement();
         HandleGravity();
+
+        // Loop 循环计时器
+        if (isLoopActive)
+        {
+            loopTimer += Time.deltaTime;
+            if (loopTimer >= loopDuration)
+            {
+                // 时间到，触发回滚
+                StartRewind();
+            }
+        }
     }
 
     void FixedUpdate()
     {
-        if (!isRewinding && !GameManager.IsGamePaused)
+        // 仅在 Loop 异常激活时记录状态
+        if (isLoopActive && !isRewinding && !GameManager.IsGamePaused)
         {
-            RecordState();
+            RecordLoopState();
         }
     }
 
@@ -111,15 +126,61 @@ public class PlayerController : MonoBehaviour
         controlsInverted = inverted;
     }
 
-    // --- 回滚系统实现 ---
+    // --- 优化后的 Loop 循环系统 ---
 
-    void RecordState()
+    /// <summary>
+    /// 启动 Loop 异常（由 TimeAnomalyManager 调用）
+    /// </summary>
+    public void StartLoopAnomaly(float duration = 5f)
     {
-        if (historyRecords.Count >= maxHistoryFrames)
+        isLoopActive = true;
+        loopDuration = duration;
+        loopTimer = 0f;
+        loopRecords.Clear();
+        
+        // 根据循环时长动态调整记录帧数
+        maxLoopFrames = Mathf.CeilToInt(duration * 60); // 假设60fps
+        
+        Debug.Log($"Loop 异常启动，循环周期: {duration}秒，最大记录帧数: {maxLoopFrames}");
+    }
+
+    /// <summary>
+    /// 停止 Loop 异常（解决异常时调用）
+    /// </summary>
+    public void StopLoopAnomaly()
+    {
+        // --- 修改：添加状态检查，防止重复清理 ---
+        if (!isLoopActive && !isRewinding)
         {
-            historyRecords.RemoveAt(0);
+            return; // 如果已经是正常状态，不需要重复清理
         }
-        historyRecords.Add(new PlayerState
+
+        isLoopActive = false;
+        isRewinding = false;
+        loopTimer = 0f;
+        loopRecords.Clear();
+        
+        // 确保恢复控制
+        if (characterController != null)
+        {
+            characterController.enabled = true;
+        }
+        
+        Debug.Log("Loop 异常已解决");
+    }
+
+    /// <summary>
+    /// 记录循环状态（仅在 Loop 激活时调用）
+    /// </summary>
+    void RecordLoopState()
+    {
+        // 如果超过最大帧数，移除最早的记录
+        if (loopRecords.Count >= maxLoopFrames)
+        {
+            loopRecords.RemoveAt(0);
+        }
+
+        loopRecords.Add(new PlayerState
         {
             position = transform.position,
             rotation = transform.rotation,
@@ -127,47 +188,81 @@ public class PlayerController : MonoBehaviour
         });
     }
 
-    public void StartRewind()
+    /// <summary>
+    /// 开始回滚（时间到达循环终点时调用）
+    /// </summary>
+    void StartRewind()
     {
+        if (loopRecords.Count == 0)
+        {
+            Debug.LogWarning("没有可回滚的记录，重置计时器");
+            loopTimer = 0f;
+            return;
+        }
+
         isRewinding = true;
-        characterController.enabled = false; // 禁用碰撞器以免回滚时卡住
+        characterController.enabled = false; // 回滚时禁用碰撞器
+        Debug.Log($"开始回滚，共 {loopRecords.Count} 帧记录");
+
+        // 暂停游戏时间
+        if (GameTimer.Instance != null)
+        {
+            GameTimer.Instance.PauseForRewind();
+        }
     }
 
-    public void StopRewind()
-    {
-        isRewinding = false;
-        characterController.enabled = true;
-        historyRecords.Clear(); // 回滚结束清空历史，防止重复
-    }
-
+    /// <summary>
+    /// 执行回滚逻辑（每帧调用）
+    /// </summary>
     void ExecuteRewind()
     {
-        if (historyRecords.Count > 0)
+        if (loopRecords.Count > 0)
         {
-            // 取出最后一帧
-            int index = historyRecords.Count - 1;
-            PlayerState state = historyRecords[index];
+            // 取出最后一帧（倒序播放）
+            int index = loopRecords.Count - 1;
+            PlayerState state = loopRecords[index];
 
+            // 应用位置和旋转
             transform.position = state.position;
             transform.rotation = state.rotation;
             cameraTransform.localRotation = state.camRotation;
 
-            historyRecords.RemoveAt(index);
+            loopRecords.RemoveAt(index);
         }
         else
         {
-            // 历史记录播放完毕，停止回滚或保持不动
-            // 这里可以选择自动停止，也可以等异常解决
+            // 回滚完成，回到循环起点
+            FinishRewind();
         }
     }
 
-    // --- 安全传送 (用于时间跳跃) ---
+    /// <summary>
+    /// 回滚完成，恢复玩家控制
+    /// </summary>
+    void FinishRewind()
+    {
+        isRewinding = false;
+        loopTimer = 0f; // 重置循环计时器
+        loopRecords.Clear(); // 清空记录，重新开始记录
+        characterController.enabled = true; // 恢复玩家控制
+
+        // 恢复游戏时间
+        if (GameTimer.Instance != null)
+        {
+            GameTimer.Instance.ResumeFromRewind();
+        }
+        
+        Debug.Log("回滚完成，玩家可以继续操作");
+    }
+
+    // --- 安全传送 (用于 Jump 异常) ---
     public void SafeTeleportForward(float distance)
     {
+        // Vector3 origin = transform.position + Vector3.up; // 稍微抬高一点检测
+        Vector3 origin = transform.position + Vector3.up * 0.5f;
         Vector3 forward = transform.forward;
-        Vector3 origin = transform.position + Vector3.up; // 稍微抬高一点检测
-
         RaycastHit hit;
+
         float targetDist = distance;
 
         // 射线检测前方是否有墙

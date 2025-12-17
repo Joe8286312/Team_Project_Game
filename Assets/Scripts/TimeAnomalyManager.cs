@@ -21,6 +21,7 @@ public class TimeAnomalyManager : MonoBehaviour
     private GameTimer.TimeExceptionType currentType = GameTimer.TimeExceptionType.None;
     private Coroutine anomalyRoutine; // 用于延迟触发
     private Coroutine cloneSpawnRoutine; // 用于分身生成
+    private Coroutine jumpRoutine; // 新增：Jump 协程
 
     void Awake()
     {
@@ -42,6 +43,7 @@ public class TimeAnomalyManager : MonoBehaviour
         // 安全清理：如果有正在运行的协程或特效，先停止
         if (anomalyRoutine != null) { StopCoroutine(anomalyRoutine); anomalyRoutine = null; }
         if (cloneSpawnRoutine != null) { StopCoroutine(cloneSpawnRoutine); cloneSpawnRoutine = null; }
+        if (jumpRoutine != null) { StopCoroutine(jumpRoutine); jumpRoutine = null; } // 新增
 
         // 如果上一关的特效还在，先强制复原
         if (isAnomalyActive) ResolveEffect();
@@ -101,7 +103,7 @@ public class TimeAnomalyManager : MonoBehaviour
     {
         isAnomalyActive = true;
         Debug.Log($"TimeAnomalyManager: 激活 -> {currentType} | 组合: {currentOptions}");
-
+        
         switch (currentType)
         {
             case GameTimer.TimeExceptionType.Stop:
@@ -119,10 +121,9 @@ public class TimeAnomalyManager : MonoBehaviour
                     if (currentPlayer != null) currentPlayer.SetSpeedMultiplier(2.0f);
 
                 if (HasOption(LevelSceneSettings.AnomalyOptions.SceneObjects))
-                {
                     if (currentAnimators != null)
-                        foreach (var anim in currentAnimators) if (anim != null) anim.speed = 2.0f;
-                }
+                        foreach (var anim in currentAnimators) 
+                            if (anim != null) anim.speed = 2.0f;
                 break;
 
             case GameTimer.TimeExceptionType.Reverse:
@@ -130,17 +131,22 @@ public class TimeAnomalyManager : MonoBehaviour
                 if (HasOption(LevelSceneSettings.AnomalyOptions.Audio))
                     if (currentAudio != null) currentAudio.pitch = -0.8f;
 
-                if (HasOption(LevelSceneSettings.AnomalyOptions.PlayerBody))
-                    if (currentPlayer != null) currentPlayer.StartRewind();
-
                 if (HasOption(LevelSceneSettings.AnomalyOptions.PlayerInput))
                     if (currentPlayer != null) currentPlayer.SetControlsInverted(true);
                 break;
 
             case GameTimer.TimeExceptionType.Jump:
-                // 跳跃 (属于身体移动)
+                // --- 修改：启动持续跳跃协程 ---
                 if (HasOption(LevelSceneSettings.AnomalyOptions.PlayerBody))
-                    if (currentPlayer != null) currentPlayer.SafeTeleportForward(10f);
+                {
+                    if (currentPlayer != null)
+                    {
+                        // 立即执行第一次跳跃
+                        currentPlayer.SafeTeleportForward(10f);
+                        // 启动持续跳跃协程
+                        jumpRoutine = StartCoroutine(JumpRoutine());
+                    }
+                }
                 break;
 
             case GameTimer.TimeExceptionType.Loop:
@@ -149,10 +155,21 @@ public class TimeAnomalyManager : MonoBehaviour
                 {
                     if (currentAudio != null)
                     {
-                        currentAudio.time = 0;
+                        // 音频循环逻辑
+                        float loopPoint = currentAudio.time;
                         currentAudio.loop = true;
                     }
                 }
+
+                // --- 核心修改：启动玩家的 Loop 循环系统 ---
+                if (HasOption(LevelSceneSettings.AnomalyOptions.PlayerBody))
+                    if (currentPlayer != null)
+                    {
+                        // 传入循环周期（可以从 LevelSceneSettings 配置）
+                        float loopDuration = 5f; // 默认5秒循环
+                        currentPlayer.StartLoopAnomaly(loopDuration);
+                        Debug.Log("玩家 Loop 循环已启动");
+                    }
                 break;
 
             case GameTimer.TimeExceptionType.SpawnClone:
@@ -166,6 +183,26 @@ public class TimeAnomalyManager : MonoBehaviour
         }
     }
 
+    // --- 新增：Jump 持续跳跃协程 ---
+    private IEnumerator JumpRoutine()
+    {
+        // 配置参数
+        float jumpInterval = 5f;      // 每5秒跳跃一次
+        float jumpDistance = 10f;     // 每次跳跃10米
+
+        while (isAnomalyActive && currentType == GameTimer.TimeExceptionType.Jump)
+        {
+            yield return new WaitForSeconds(jumpInterval);
+
+            // 执行跳跃
+            if (currentPlayer != null)
+            {
+                currentPlayer.SafeTeleportForward(jumpDistance);
+                Debug.Log($"时间跳跃：玩家前进 {jumpDistance} 米");
+            }
+        }
+    }
+
     // --- 找回：分身生成逻辑 ---
     private IEnumerator SpawnCloneRoutine()
     {
@@ -173,61 +210,109 @@ public class TimeAnomalyManager : MonoBehaviour
         {
             // 这里调用你的生成逻辑，或者在 PlayerController 里有一个 SpawnClone() 方法
             Debug.Log("TimeAnomalyManager: 生成了一个时间残影 (Clone)!");
-
             // 示例：如果有预制体，可以在这里 Instantiate
             // Instantiate(clonePrefab, currentPlayer.transform.position, Quaternion.identity);
-
+            // TODO: 实现分身生成逻辑
             yield return new WaitForSeconds(10f); // 每10秒生成一个
         }
     }
 
-    // --- 3. 清除特效 ---
+    // --- 3. 统一的清除特效方法 ---
     public void ResolveEffect()
     {
+        Debug.Log("TimeAnomalyManager: 开始清理异常特效...");
+
         // 停止所有协程
-        if (anomalyRoutine != null) { StopCoroutine(anomalyRoutine); anomalyRoutine = null; }
-        if (cloneSpawnRoutine != null) { StopCoroutine(cloneSpawnRoutine); cloneSpawnRoutine = null; }
-
-        if (isAnomalyActive)
-        {
-            isAnomalyActive = false;
-
-            // 无论之前选了什么，这里都尝试复原所有状态，防止残留
-            if (currentAudio != null)
-            {
-                currentAudio.UnPause();
-                currentAudio.pitch = 1.0f;
-            }
-
-            if (currentPlayer != null)
-            {
-                currentPlayer.SetSpeedMultiplier(1.0f);
-                currentPlayer.StopRewind();
-                currentPlayer.SetControlsInverted(false);
-            }
-
-            if (currentAnimators != null)
-            {
-                foreach (var anim in currentAnimators) if (anim != null) anim.speed = 1.0f;
-            }
+        if (anomalyRoutine != null) 
+        { 
+            StopCoroutine(anomalyRoutine); 
+            anomalyRoutine = null; 
+        }
+        if (cloneSpawnRoutine != null) 
+        { 
+            StopCoroutine(cloneSpawnRoutine); 
+            cloneSpawnRoutine = null; 
+        }
+        if (jumpRoutine != null)
+        { 
+            StopCoroutine(jumpRoutine); 
+            jumpRoutine = null; 
         }
 
-        // 总是显示奖励
+        // 清除所有特效
+        if (isAnomalyActive)
+        {
+            ClearAllEffects();
+        }
+
+        // 显示奖励物品
         foreach (var obj in postAnomalyObjects)
         {
             if (obj != null) obj.SetActive(true);
         }
+
+        // --- 新增：清空引用，防止残留 ---
+        currentAudio = null;
+        currentPlayer = null;
+        currentAnimators.Clear();
+        postAnomalyObjects.Clear();
+        
+        Debug.Log("TimeAnomalyManager: 异常特效清理完成");
+    }
+
+    // --- 4. 清除所有特效（内部方法）---
+    private void ClearAllEffects()
+    {
+        // 音频复原
+        if (currentAudio != null)
+        {
+            currentAudio.UnPause();
+            currentAudio.pitch = 1.0f;
+            currentAudio.loop = false;
+        }
+
+        // 玩家状态复原
+        if (currentPlayer != null)
+        {
+            currentPlayer.SetSpeedMultiplier(1.0f);
+            currentPlayer.SetControlsInverted(false);
+            
+            // 如果是 Loop 异常，调用专门的停止方法
+            if (currentType == GameTimer.TimeExceptionType.Loop)
+            {
+                currentPlayer.StopLoopAnomaly();
+            }
+        }
+
+        // 场景物体复原
+        if (currentAnimators != null)
+        {
+            foreach (var anim in currentAnimators)
+            {
+                if (anim != null) anim.speed = 1.0f;
+            }
+        }
+
+        isAnomalyActive = false;
+        currentType = GameTimer.TimeExceptionType.None;
+        
+        // Debug.Log("所有时间异常特效已清除");
     }
 
     void Update()
     {
         if (isAnomalyActive)
         {
-            // 持续性逻辑
+            // Loop 异常的持续性逻辑（音频循环）
             if (currentType == GameTimer.TimeExceptionType.Loop)
             {
                 if (HasOption(LevelSceneSettings.AnomalyOptions.Audio))
-                    if (currentAudio != null && currentAudio.time > 5.0f) currentAudio.time = 0f;
+                {
+                    if (currentAudio != null && currentAudio.time > 5.0f)
+                    {
+                        currentAudio.time = 0f;
+                    }
+                }
             }
         }
     }

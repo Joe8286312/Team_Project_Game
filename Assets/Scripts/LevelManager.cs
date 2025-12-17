@@ -282,6 +282,9 @@ public class LevelManager : MonoBehaviour
         foundAnomalies = 0;
         currentLevelData = null;
 
+        // --- 新增：关卡切换前强制清理所有异常 ---
+        CleanupAnomaliesBeforeSceneChange();
+
         string sceneToLoad = "";
 
         // 逻辑判定：第几层去哪个池子拿数据
@@ -325,6 +328,38 @@ public class LevelManager : MonoBehaviour
         {
             Debug.LogError("无法加载关卡：场景名为空，可能是池子空了或配置错误。");
         }
+    }
+
+    // --- 新增方法：清理异常数据 ---
+    /// <summary>
+    /// 在场景切换前清理所有时间异常状态，防止残留
+    /// </summary>
+    private void CleanupAnomaliesBeforeSceneChange()
+    {
+        Debug.Log("LevelManager: 正在清理旧关卡的异常数据...");
+
+        // 1. 清理 TimeAnomalyManager 的特效
+        if (TimeAnomalyManager.Instance != null)
+        {
+            TimeAnomalyManager.Instance.ResolveEffect();
+        }
+
+        // 2. 清理 GameTimer 的异常状态
+        if (GameTimer.Instance != null)
+        {
+            GameTimer.Instance.ResolveAnomaly();
+        }
+
+        // 3. 清理玩家身上的异常效果（防止 Loop 回滚等状态残留）
+        PlayerController player = FindObjectOfType<PlayerController>();
+        if (player != null)
+        {
+            player.StopLoopAnomaly(); // 停止循环异常
+            player.SetSpeedMultiplier(1.0f); // 恢复正常速度
+            player.SetControlsInverted(false); // 恢复正常控制
+        }
+
+        Debug.Log("异常数据清理完成");
     }
 
     // --- 供 UI 使用的 Getter ---

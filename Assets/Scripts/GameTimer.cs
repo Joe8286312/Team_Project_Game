@@ -79,6 +79,8 @@ public class GameTimer : MonoBehaviour
     {
         if (currentException != TimeExceptionType.None)
         {
+            Debug.Log($"GameTimer: 正在清除异常 {currentException}");
+
             // 1. 状态复原
             currentException = TimeExceptionType.None;
 
@@ -86,7 +88,7 @@ public class GameTimer : MonoBehaviour
             if (TimeAnomalyManager.Instance != null)
                 TimeAnomalyManager.Instance.ResolveEffect();
 
-            // 3. 计分
+            // 3. 计分（只在主动解决时计分）
             if (hasActiveAnomaly)
             {
                 hasActiveAnomaly = false;
@@ -95,6 +97,16 @@ public class GameTimer : MonoBehaviour
             }
 
             // 4. 强制同步时间 (防止漂移)
+            SyncDisplayToReal();
+            
+            // --- 新增：清除回滚暂停状态 ---
+            isPausedForRewind = false;
+        }
+        // --- 新增：即使没有异常也要确保状态复原 ---
+        else
+        {
+            hasActiveAnomaly = false;
+            isPausedForRewind = false;
             SyncDisplayToReal();
         }
     }
@@ -124,8 +136,12 @@ public class GameTimer : MonoBehaviour
         UpdateDisplayTime();
     }
 
+    private bool isPausedForRewind = false; // 新增标记
+
     private void UpdateDisplayTime()
     {
+        if (!isRealTimeRunning || isPausedForRewind) return; // 回滚时暂停
+
         switch (currentException)
         {
             case TimeExceptionType.None:
@@ -147,7 +163,8 @@ public class GameTimer : MonoBehaviour
                 displayElapsedTime += Time.deltaTime;
                 if (Time.time - lastJumpTime >= jumpInterval)
                 {
-                    displayElapsedTime += Random.Range(10f, 60f);
+                    // displayElapsedTime += Random.Range(10f, 60f);
+                    displayElapsedTime += 5.0f;
                     lastJumpTime = Time.time;
                 }
                 break;
@@ -193,5 +210,16 @@ public class GameTimer : MonoBehaviour
         int minutes = (int)(time / 60f);
         int seconds = (int)(time % 60f);
         return string.Format("{0:00}:{1:00}", minutes, seconds);
+    }
+
+    // 新增：供 PlayerController 调用
+    public void PauseForRewind()
+    {
+        isPausedForRewind = true;
+    }
+
+    public void ResumeFromRewind()
+    {
+        isPausedForRewind = false;
     }
 }
