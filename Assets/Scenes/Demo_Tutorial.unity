@@ -3558,7 +3558,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   timeExceptionType: 6
-  activeOptions: 0
+  activeOptions: 2
   specificAudio: {fileID: 0}
   specificPlayer: {fileID: 0}
   accelerateAnimators:

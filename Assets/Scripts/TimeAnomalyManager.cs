@@ -23,6 +23,8 @@ public class TimeAnomalyManager : MonoBehaviour
     private Coroutine cloneSpawnRoutine; // 用于分身生成
     private Coroutine jumpRoutine; // 新增：Jump 协程
 
+    public GameObject clonePrefab; // 拖到 Inspector
+
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -206,14 +208,22 @@ public class TimeAnomalyManager : MonoBehaviour
     // --- 找回：分身生成逻辑 ---
     private IEnumerator SpawnCloneRoutine()
     {
+        float interval = 10f; // 每10秒生成一个分身
         while (isAnomalyActive && currentType == GameTimer.TimeExceptionType.SpawnClone)
         {
-            // 这里调用你的生成逻辑，或者在 PlayerController 里有一个 SpawnClone() 方法
-            Debug.Log("TimeAnomalyManager: 生成了一个时间残影 (Clone)!");
-            // 示例：如果有预制体，可以在这里 Instantiate
-            // Instantiate(clonePrefab, currentPlayer.transform.position, Quaternion.identity);
-            // TODO: 实现分身生成逻辑
-            yield return new WaitForSeconds(10f); // 每10秒生成一个
+            if (currentPlayer != null && clonePrefab != null)
+            {
+                // 生成分身
+                Debug.Log("游戏分身生成");
+                GameObject clone = Instantiate(
+                    clonePrefab,
+                    currentPlayer.transform.position,
+                    currentPlayer.transform.rotation
+                );
+                // 可选：让分身半透明、自动销毁
+                Destroy(clone, 8f); // 8秒后自动消失
+            }
+            yield return new WaitForSeconds(interval);
         }
     }
 
