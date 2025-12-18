@@ -19,6 +19,9 @@ public class GameManager : MonoBehaviour
 
     public static bool IsGamePaused { get; private set; } = false;
 
+    public delegate void PauseStateChanged(bool isPaused);
+    public static event PauseStateChanged OnPauseStateChanged;
+
     private void Awake()
     {
         if (Instance == null)
@@ -123,6 +126,8 @@ public class GameManager : MonoBehaviour
             pauseMenuController.pauseMenu.SetActive(true);
         }
         UnlockCursor();
+        // 新增：广播暂停事件
+        if (OnPauseStateChanged != null) OnPauseStateChanged(true);
     }
 
     public void ResumeGame()
@@ -134,6 +139,8 @@ public class GameManager : MonoBehaviour
             pauseMenuController.pauseMenu.SetActive(false);
         }
         LockCursor();
+        // 新增：广播恢复事件
+        if (OnPauseStateChanged != null) OnPauseStateChanged(false);
     }
 
     private void UnlockCursor()
