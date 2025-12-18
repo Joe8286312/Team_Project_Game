@@ -112,6 +112,9 @@ public class TimeAnomalyManager : MonoBehaviour
                 // 停止：只在勾选 Audio 时暂停音乐
                 if (HasOption(LevelSceneSettings.AnomalyOptions.Audio))
                     if (currentAudio != null) currentAudio.Pause();
+                // 新增：冻结玩家
+                if (HasOption(LevelSceneSettings.AnomalyOptions.PlayerBody))
+                    if (currentPlayer != null) currentPlayer.SetPlayerFrozen(true);
                 break;
 
             case GameTimer.TimeExceptionType.DoubleSpeed:
@@ -286,7 +289,10 @@ public class TimeAnomalyManager : MonoBehaviour
         {
             currentPlayer.SetSpeedMultiplier(1.0f);
             currentPlayer.SetControlsInverted(false);
-            
+
+            // 新增：解除冻结
+            currentPlayer.SetPlayerFrozen(false);
+
             // 如果是 Loop 异常，调用专门的停止方法
             if (currentType == GameTimer.TimeExceptionType.Loop)
             {

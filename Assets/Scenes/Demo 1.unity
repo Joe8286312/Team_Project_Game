@@ -7845,12 +7845,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a4f80d443e008364cba29dd0c559afff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  timeExceptionType: 2
+  timeExceptionType: 1
   activeOptions: 2
   specificAudio: {fileID: 0}
   specificPlayer: {fileID: 0}
   accelerateAnimators: []
-  startDelay: 30
+  startDelay: 3
   appearOnResolve: []
 --- !u!4 &1866945688
 Transform:

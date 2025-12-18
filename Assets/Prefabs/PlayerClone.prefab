@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 494109940585784456}
   - component: {fileID: 812713518791935167}
   - component: {fileID: 8229323978059901668}
+  - component: {fileID: 384050295507639250}
   m_Layer: 0
   m_Name: PlayerClone
   m_TagString: Untagged
@@ -107,3 +108,16 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &384050295507639250
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5083890753057936849}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8375df776f65d0a4692619101cf29d8d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  fadeDuration: 2

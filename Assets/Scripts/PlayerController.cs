@@ -13,6 +13,9 @@ public class PlayerController : MonoBehaviour
     private CharacterController characterController;
     private float verticalRotation = 0f;
 
+    // 新增：玩家冻结标志
+    private bool isPlayerFrozen = false;
+
     // --- 优化后的时间循环系统 (仅用于 Loop 异常) ---
     private struct PlayerState
     {
@@ -36,6 +39,9 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         if (GameManager.IsGamePaused) return;
+
+        // 新增：如果冻结，禁止一切输入
+        if (isPlayerFrozen) return;
 
         // 如果正在回滚，不接受玩家输入，只播放历史
         if (isRewinding)
@@ -63,6 +69,9 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
+        // 新增：冻结时不记录Loop
+        if (isPlayerFrozen) return;
+
         // 仅在 Loop 异常激活时记录状态
         if (isLoopActive && !isRewinding && !GameManager.IsGamePaused)
         {
@@ -124,6 +133,12 @@ public class PlayerController : MonoBehaviour
     public void SetControlsInverted(bool inverted)
     {
         controlsInverted = inverted;
+    }
+
+    // 新增：设置玩家冻结状态
+    public void SetPlayerFrozen(bool frozen)
+    {
+        isPlayerFrozen = frozen;
     }
 
     // --- 优化后的 Loop 循环系统 ---
