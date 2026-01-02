@@ -3,6 +3,21 @@ using UnityEngine.SceneManagement;
 
 public class MenuController : MonoBehaviour
 {
+
+    public void Start()
+    {
+        if (AudioManager.Instance != null)
+        {
+            // 启动主菜单时自动播放主菜单BGM
+            AudioManager.Instance.PlayBGM("BGM-nop");
+            Debug.Log("bgm播放成功");
+        }
+        else
+        {
+            Debug.Log("bgm播放失败");
+            
+        }
+    }
     public void StartGame()
     {
         // 1. 重置时间管理器
@@ -21,6 +36,8 @@ public class MenuController : MonoBehaviour
             Debug.LogError("场景中未找到LevelManager！正在尝试直接加载教程...");
             SceneManager.LoadScene("Demo_Tutorial");
         }
+
+        
     }
 
     public void QuitGame()
